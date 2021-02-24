@@ -9,11 +9,11 @@ pub fn main() {
 fn first() {
     let width = 1000.0;
     let height = 1000.0;
-    let back_color = COLOR_BLACK;
+    let back_color = Color1::black();
     let anchor_radius = 5.0;
-    let anchor_color = COLOR_BLUE;
+    let anchor_color = Color1::blue();
     let point_radius = 0.5;
-    let point_color = COLOR_WHITE;
+    let point_color = Color1::white();
     let anchor_count = 3;
     // let point_count: usize = 1000;
     // let total_seconds = 10.0;
@@ -41,11 +41,11 @@ fn first() {
         let mut shapes = vec![];
         for anchor in anchors.iter() {
             let (x, y) = anchor;
-            shapes.push(Shape::circle(*x, *y, anchor_radius, anchor_color));
+            shapes.push(Shape::circle(*x, *y, anchor_radius, anchor_color.clone()));
         }
         for point_index in 0..(frame_index * batch_size) {
             let (x, y) = points[point_index];
-            shapes.push(Shape::circle(x, y, point_radius, point_color));
+            shapes.push(Shape::circle(x, y, point_radius, point_color.clone()));
         }
         frames.push(Frame::new(shapes, frame_seconds));
     }

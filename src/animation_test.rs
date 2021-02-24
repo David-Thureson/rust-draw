@@ -12,9 +12,9 @@ type Color = [f32; 4];
 
 const COLOR_BLACK: Color = [0.0, 0.0, 0.0, 1.0];
 const COLOR_WHITE: Color = [1.0, 1.0, 1.0, 1.0];
-const COLOR_RED: [f32; 4]   = [1.0, 0.0, 0.0, 1.0];
-const COLOR_GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-const COLOR_BLUE: [f32; 4]  = [0.0, 0.0, 1.0, 1.0];
+const COLOR_RED: Color = [1.0, 0.0, 0.0, 1.0];
+const COLOR_GREEN: Color = [0.0, 1.0, 0.0, 1.0];
+const COLOR_BLUE: Color = [0.0, 0.0, 1.0, 1.0];
 
 pub struct Animator {
     gl: GlGraphics, // OpenGL drawing backend.

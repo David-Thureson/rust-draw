@@ -1,7 +1,7 @@
-use draw::{animation_test, try_fractal, try_renderer};
-
 fn main() {
     // animation_test::main();
     // try_renderer::main();
-    try_fractal::main();
+    // draw::try_fractal::main();
+    // draw::barnsley_fern_raster::main();
+    draw::barnsley_fern_animated::main();
 }

@@ -1,21 +1,18 @@
+extern crate euclid;
 extern crate glutin_window;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
-extern crate euclid;
 
 pub mod animation_test;
+pub mod barnsley_fern_animated;
+pub mod barnsley_fern_raster;
+pub mod color;
 pub mod renderer;
 pub mod try_fractal;
 pub mod try_renderer;
 
-pub type Color = [f32; 4];
-
-pub const COLOR_BLACK: Color = [0.0, 0.0, 0.0, 1.0];
-pub const COLOR_WHITE: Color = [1.0, 1.0, 1.0, 1.0];
-pub const COLOR_RED: [f32; 4]   = [1.0, 0.0, 0.0, 1.0];
-pub const COLOR_GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-pub const COLOR_BLUE: [f32; 4]  = [0.0, 0.0, 1.0, 1.0];
+pub use color::*;
 
 pub type ShapeList = Vec<Shape>;
 
@@ -26,12 +23,12 @@ pub enum Shape {
         center_x: f64,
         center_y: f64,
         radius: f64,
-        color: Color,
+        color: Color1,
     }
 }
 
 impl Shape {
-    pub fn circle(center_x: f64, center_y: f64, radius: f64, color: Color) -> Shape {
+    pub fn circle(center_x: f64, center_y: f64, radius: f64, color: Color1) -> Shape {
         Shape::Circle {
             center_x,
             center_y,

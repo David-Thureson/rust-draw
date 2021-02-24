@@ -12,7 +12,7 @@ use crate::{Frame, Shape, ShapeList};
 
 pub struct Renderer {
     gl: GlGraphics, // OpenGL drawing backend.
-    back_color: crate::Color,
+    back_color: crate::Color1,
     frames: Vec<Frame>,
     start_time: Instant,
     next_frame_time: Instant,
@@ -20,7 +20,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn display(title: &str, width: f64, height: f64, back_color: crate::Color, frames: Vec<Frame>) {
+    pub fn display(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>) {
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
@@ -85,15 +85,15 @@ impl Renderer {
 
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
-            clear(back_color, gl);
+            clear(back_color.into(), gl);
 
             /*
             let rect = [20.0, 40.0, 10.0, 10.0];
             let transform = c.transform;
-            ellipse(COLOR_WHITE, rect, transform, gl);
+            ellipse(Color1::white(), rect, transform, gl);
 
             let transform = c.transform.trans(50.0, 50.0);
-            ellipse(COLOR_BLUE, rect, transform, gl);
+            ellipse(Color1::blue(), rect, transform, gl);
             */
 
             for shape in shapes {
@@ -101,7 +101,7 @@ impl Renderer {
                     Shape::Circle { center_x, center_y, radius, color } => {
                         let rect = [center_x - radius, center_y - radius, radius * 2.0, radius * 2.0];
                         let transform = c.transform;
-                        ellipse(color, rect, transform, gl);
+                        ellipse(color.into(), rect, transform, gl);
                     },
                     _ => unimplemented!(),
                 }
@@ -115,7 +115,7 @@ impl Renderer {
                 .trans(-25.0, -25.0);
 
             // Draw a box rotating around the middle of the screen.
-            rectangle(COLOR_WHITE, square, transform, gl);
+            rectangle(Color1::white(), square, transform, gl);
             */
 
         });
