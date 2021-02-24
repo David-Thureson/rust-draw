@@ -1,5 +1,6 @@
-use draw::animator;
+use draw::{animation_test, try_renderer};
 
 fn main() {
-    animator::main();
+    // animation_test::main();
+    try_renderer::main();
 }

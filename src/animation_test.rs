@@ -45,7 +45,7 @@ impl Animator {
             if self.current_frame < self.frames.len() - 1 {
                 self.current_frame += 1;
             }
-            dbg!(self.current_frame, args.ext_dt);
+            //bg!(self.current_frame, args.ext_dt);
         }
         // frame_index = min(frame_index, self.frames.len() - 1);
         let shapes = self.frames[self.current_frame].clone();
@@ -113,8 +113,21 @@ pub fn main() {
         frame_seconds: 1.0,
         frames: vec![
             vec![Shape::circle(20.0, 20.0, 5.0, COLOR_WHITE)],
-            vec![Shape::circle(40.0, 20.0, 5.0, COLOR_BLUE), Shape::circle(40.0, 40.0, 5.0, COLOR_WHITE)],
-            vec![Shape::circle(60.0, 20.0, 5.0, COLOR_GREEN), Shape::circle(60.0, 40.0, 5.0, COLOR_BLUE), Shape::circle(60.0, 60.0, 5.0, COLOR_WHITE)],
+            vec![
+                Shape::circle(40.0, 20.0, 5.0, COLOR_BLUE),
+                Shape::circle(40.0, 40.0, 5.0, COLOR_WHITE)
+            ],
+            vec![
+                Shape::circle(60.0, 20.0, 5.0, COLOR_GREEN),
+                Shape::circle(60.0, 40.0, 5.0, COLOR_BLUE),
+                Shape::circle(60.0, 60.0, 5.0, COLOR_WHITE)
+            ],
+            vec![
+                Shape::circle( 40.0,  40.0, 40.0, COLOR_WHITE),
+                Shape::circle(160.0,  40.0, 40.0, COLOR_RED),
+                Shape::circle( 40.0, 160.0, 40.0, COLOR_GREEN),
+                Shape::circle(160.0, 160.0, 40.0, COLOR_BLUE)
+            ],
         ],
         next_frame_time: Instant::now().add(Duration::from_secs_f64(1.0)),
         current_frame: 0,
