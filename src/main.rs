@@ -1,3 +1,5 @@
+use draw::animator;
+
 fn main() {
-    println!("Hello, world!");
+    animator::main();
 }
