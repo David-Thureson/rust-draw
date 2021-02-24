@@ -6,6 +6,7 @@ extern crate euclid;
 
 pub mod animation_test;
 pub mod renderer;
+pub mod try_fractal;
 pub mod try_renderer;
 
 pub type Color = [f32; 4];

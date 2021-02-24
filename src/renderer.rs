@@ -20,12 +20,12 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn display(title: &str, width: usize, height: usize, back_color: crate::Color, frames: Vec<Frame>) {
+    pub fn display(title: &str, width: f64, height: f64, back_color: crate::Color, frames: Vec<Frame>) {
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
         // Create an Glutin window.
-        let mut window: Window = WindowSettings::new(title, [width as f64, height as f64])
+        let mut window: Window = WindowSettings::new(title, [width, height])
             .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
@@ -69,14 +69,14 @@ impl Renderer {
         // let mut frame_index = (args.ext_dt / self.frame_seconds).floor() as usize;
         let now = Instant::now();
         if now >= self.next_frame_time {
-            println!("\nnow = {}", now.duration_since(self.start_time).as_secs_f32());
-            println!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
+            //rintln!("\nnow = {}", now.duration_since(self.start_time).as_secs_f32());
+            //rintln!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
             if self.current_frame < self.frames.len() - 1 {
                 self.current_frame += 1;
             }
             self.next_frame_time = self.next_frame_time.add(Duration::from_secs_f64(self.frames[self.current_frame].seconds_to_next));
-            println!("seconds_to_next = {}", self.frames[self.current_frame].seconds_to_next);
-            println!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
+            //rintln!("seconds_to_next = {}", self.frames[self.current_frame].seconds_to_next);
+            //rintln!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
             //bg!(self.current_frame, self.next_frame_time, self.frames[self.current_frame].seconds_to_next);
         }
         // frame_index = min(frame_index, self.frames.len() - 1);

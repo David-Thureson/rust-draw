@@ -24,5 +24,5 @@ fn first() {
             Shape::circle(160.0, 160.0, 40.0, COLOR_BLUE)
         ],16.0),
     ];
-    Renderer::display("Circle Test", 300, 200, COLOR_BLACK, frames);
+    Renderer::display("Circle Test", 300.0, 200.0, COLOR_BLACK, frames);
 }
