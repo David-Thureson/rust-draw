@@ -1,13 +1,12 @@
 use crate::*;
 use rand::prelude::*;
-use renderer::Renderer;
-use crate::renderer_1::Renderer1;
 
 pub fn main() {
     first();
 }
 
 fn first() {
+    let additive = false;
     let width = 1000.0;
     let height = 1000.0;
     let back_color = Color1::black();
@@ -15,12 +14,13 @@ fn first() {
     let anchor_color = Color1::blue();
     let point_radius = 0.5;
     let point_color = Color1::white();
-    let anchor_count = 3;
+    // let anchor_count = 3;
     // let point_count: usize = 1000;
     // let total_seconds = 10.0;
-    let point_count: usize = 50000;
+    let point_count: usize = 50_000;
     let total_seconds = 10.0;
-    let batch_size = 2500;
+    // let batch_size = 2500;
+    let batch_size = 1_000;
     let frame_count = point_count / batch_size;
     let frame_seconds = total_seconds / frame_count as f64;
 
@@ -40,17 +40,20 @@ fn first() {
     let mut frames = vec![];
     for frame_index in 0..frame_count {
         let mut shapes = vec![];
-        for anchor in anchors.iter() {
-            let (x, y) = anchor;
-            shapes.push(Shape::circle(*x, *y, anchor_radius, anchor_color.clone()));
+        if frame_index == 0 || !additive {
+            for anchor in anchors.iter() {
+                let (x, y) = anchor;
+                shapes.push(Shape::circle(*x, *y, anchor_radius, anchor_color.clone()));
+            }
         }
-        for point_index in 0..((frame_index + 1) * batch_size) {
+        let point_index_start = if additive { frame_index * batch_size } else { 0 };
+        for point_index in point_index_start..((frame_index + 1) * batch_size) {
             let (x, y) = points[point_index];
             shapes.push(Shape::circle(x, y, point_radius, point_color.clone()));
         }
         frames.push(Frame::new(shapes, frame_seconds));
     }
-    Renderer1::display("Fractal", width, height, back_color, frames);
+    crate::renderer_3::Renderer::display_additive("Fractal", width, height, back_color, frames, additive);
 }
 
 fn gen_points(rng: &mut ThreadRng, anchors: &Vec<(f64, f64)>, point_count: usize) -> Vec<(f64, f64)> {

@@ -3,9 +3,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
-use euclid;
 use std::time::{Duration, Instant};
-use std::cmp::min;
 use std::ops::Add;
 
 type Color = [f32; 4];
@@ -33,9 +31,11 @@ impl Animator {
 
         use graphics::*;
 
+        /*
         let square = rectangle::square(0.0, 0.0, 50.0);
         let rotation = 0.0;
         let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+        */
 
         let back_color = self.back_color.clone();
 
@@ -71,7 +71,7 @@ impl Animator {
                         let transform = c.transform;
                         ellipse(color, rect, transform, gl);
                     },
-                    _ => unimplemented!(),
+                    // _ => unimplemented!(),
                 }
             }
 
@@ -89,7 +89,7 @@ impl Animator {
         });
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
         //rintln!("Animator::update()");
         // Rotate 2 radians per second.
         //self.rotation += 2.0 * args.dt;

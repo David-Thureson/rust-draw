@@ -3,18 +3,18 @@
 use rand::Rng;
 
 use crate::*;
-use rand::prelude::ThreadRng;
-use crate::renderer::Renderer;
+use crate::renderer_3::Renderer;
 
 pub fn main() {
-    let point_count: usize = 200_000;
+    let point_count: usize = 100_000;
     let width = 1000.0;
     let height = width;
     let back_color = Color1::white();
     let point_radius = 0.5;
     let point_color: Color1 = Color256::from_rgb(50, 205, 50).into();
+    let point_color_end = Color1::red();
     let total_seconds = 10.0;
-    let batch_size = 1000;
+    let batch_size = 1_000;
     let frame_count = point_count / batch_size;
     let frame_seconds = total_seconds / frame_count as f64;
 
@@ -23,9 +23,12 @@ pub fn main() {
     let mut frames = vec![];
     for frame_index in 0..frame_count {
         let mut shapes = vec![];
-        for point_index in 0..(frame_index * batch_size) {
+        for point_index in 0..((frame_index + 1) * batch_size) {
             let (x, y) = points[point_index];
-            shapes.push(Shape::circle(x, y, point_radius, point_color.clone()));
+            // let color = point_color.clone();
+            let point_frame_index = point_index / batch_size;
+            let color = point_color.gradiant_one(&point_color_end, frame_count, point_frame_index);
+            shapes.push(Shape::circle(x, y, point_radius, color));
         }
         frames.push(Frame::new(shapes, frame_seconds));
     }
@@ -36,7 +39,7 @@ fn gen_points(height: f64, width: f64, point_count: usize) -> Vec<(f64, f64)> {
     let mut rng = rand::thread_rng();
     let max_iterations = point_count as u32;
     let height = height as i32;
-    let width = height as i32;
+    let width = width as i32;
 
     let mut points = vec![];
 

@@ -1,5 +1,5 @@
 use crate::*;
-use renderer::Renderer;
+use renderer_2::Renderer;
 
 pub fn main() {
     first();

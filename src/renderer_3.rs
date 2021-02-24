@@ -3,26 +3,37 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
-use euclid;
 use std::time::{Duration, Instant};
-use std::cmp::min;
 use std::ops::Add;
 
-use crate::{Frame, Shape, ShapeList};
+use crate::*;
 
 pub struct Renderer {
     gl: GlGraphics, // OpenGL drawing backend.
+    additive: bool,
     back_color: crate::Color1,
     frames: Vec<Frame>,
     start_time: Instant,
     next_frame_time: Instant,
     frame_index: usize,
     current_frame: Frame,
-    shapes: Vec<Shape>,
+    _shapes: Vec<Shape>,
+    remove_count: usize,
+    remove_seconds: f32,
+    swap_count: usize,
+    swap_seconds: f32,
+    draw_count: usize,
+    draw_seconds: f32,
+    draw_shape_count: usize,
 }
 
 impl Renderer {
     pub fn display(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>) {
+        Self::display_additive(title, width, height, back_color, frames, false);
+    }
+
+    pub fn display_additive(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>, additive: bool) {
+
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
@@ -39,13 +50,21 @@ impl Renderer {
 
         let mut rend = Renderer {
             gl: GlGraphics::new(opengl),
+            additive,
             back_color,
             frames,
             start_time: Instant::now(),
             next_frame_time,
             frame_index: usize::max_value(),
             current_frame,
-            shapes: vec![],
+            _shapes: vec![],
+            remove_count: 0,
+            remove_seconds: 0.0,
+            swap_count: 0,
+            swap_seconds: 0.0,
+            draw_count: 0,
+            draw_seconds: 0.0,
+            draw_shape_count: 0
         };
 
         let mut events = Events::new(EventSettings::new());
@@ -66,28 +85,25 @@ impl Renderer {
 
         use graphics::*;
 
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = 0.0;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
-
         let back_color = self.back_color.clone();
-
-        let mut draw = false;
 
         // let mut frame_index = (args.ext_dt / self.frame_seconds).floor() as usize;
         let now = Instant::now();
         if now >= self.next_frame_time {
             if !self.frames.is_empty() {
-                draw = true;
                 self.frame_index = if self.frame_index == usize::max_value() { 0 } else { self.frame_index + 1 };
                 //rintln!("\nnow = {}", now.duration_since(self.start_time).as_secs_f32());
                 //rintln!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
                 //rintln!("frame_index = {}", self.frame_index);
+                let start_time = Instant::now();
                 self.current_frame = self.frames.remove(0);
+                self.remove_seconds += (Instant::now() - start_time).as_secs_f32();
+                self.remove_count += 1;
                 //rintln!("shapes in this frame = {}", self.current_frame.shapes.len());
                 self.next_frame_time = self.next_frame_time.add(Duration::from_secs_f64(self.current_frame.seconds_to_next));
                 if self.frames.is_empty() {
                     println!("Last frame reached at elapsed seconds = {}", (Instant::now() - self.start_time).as_secs_f32());
+                    println!("remove_count = {}; remove_seconds = {}; swap_count = {}; swap_seconds = {}; draw_count = {}; draw_seconds = {}", self.remove_count, self.remove_seconds, self.swap_count, self.swap_seconds, self.draw_count, self.draw_seconds);
                 }
                 //rintln!("seconds_to_next = {}", self.frames[self.current_frame].seconds_to_next);
                 //rintln!("next_frame_time = {}", self.next_frame_time.duration_since(self.start_time).as_secs_f32());
@@ -99,53 +115,46 @@ impl Renderer {
         //bg!(&shapes);
 
         let mut shapes = vec![];
+        let start_time = Instant::now();
         std::mem::swap(&mut shapes, &mut self.current_frame.shapes);
+        self.swap_seconds += (Instant::now() - start_time).as_secs_f32();
+        self.swap_count += 1;
 
+        let clear_background= !self.additive || self.frame_index == 0;
+
+        self.draw_count += 1;
+        self.draw_shape_count += shapes.len();
+        let start_time = Instant::now();
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
-            clear(back_color.into(), gl);
-
-            /*
-        let rect = [20.0, 40.0, 10.0, 10.0];
-        let transform = c.transform;
-        ellipse(Color1::white(), rect, transform, gl);
-
-        let transform = c.transform.trans(50.0, 50.0);
-        ellipse(Color1::blue(), rect, transform, gl);
-        */
+            if clear_background {
+                clear(back_color.into(), gl);
+            }
 
             for shape in shapes.iter() {
                 match shape {
-                    Shape::Circle { center_x, center_y, radius, color } => {
+                    Shape::Circle { center_x, center_y, radius, color} => {
                         let rect = [center_x - radius, center_y - radius, radius * 2.0, radius * 2.0];
                         let transform = c.transform;
                         ellipse((*color).into(), rect, transform, gl);
+                        //ellipse([1.0, 1.0, 1.0, 1.0], *rect, transform, gl);
                     },
-                    _ => unimplemented!(),
+                    // _ => unimplemented!(),
                 }
             }
 
-            /*
-        let transform = c
-            .transform
-            .trans(x, y)
-            .rot_rad(rotation)
-            .trans(-25.0, -25.0);
-
-        // Draw a box rotating around the middle of the screen.
-        rectangle(Color1::white(), square, transform, gl);
-        */
         });
+        self.draw_seconds += (Instant::now() - start_time).as_secs_f32();
 
+        let start_time = Instant::now();
         std::mem::swap(&mut self.current_frame.shapes, &mut shapes);
+        self.swap_seconds += (Instant::now() - start_time).as_secs_f32();
+        self.swap_count += 1;
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
         //rintln!("Animator::update()");
         // Rotate 2 radians per second.
         //self.rotation += 2.0 * args.dt;
     }
-}
-
-pub fn main() {
 }

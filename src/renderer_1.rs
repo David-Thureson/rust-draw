@@ -3,12 +3,10 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::window::WindowSettings;
-use euclid;
 use std::time::{Duration, Instant};
-use std::cmp::min;
 use std::ops::Add;
 
-use crate::{Frame, Shape, ShapeList};
+use crate::*;
 
 pub struct Renderer1 {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -60,10 +58,6 @@ impl Renderer1 {
 
         use graphics::*;
 
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = 0.0;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
-
         let back_color = self.back_color.clone();
 
         // let mut frame_index = (args.ext_dt / self.frame_seconds).floor() as usize;
@@ -101,12 +95,12 @@ impl Renderer1 {
 
             for shape in shapes {
                 match shape {
-                    Shape::Circle { center_x, center_y, radius, color } => {
+                    Shape::Circle { center_x, center_y, radius, color, .. } => {
                         let rect = [center_x - radius, center_y - radius, radius * 2.0, radius * 2.0];
                         let transform = c.transform;
                         ellipse(color.into(), rect, transform, gl);
                     },
-                    _ => unimplemented!(),
+                    // _ => unimplemented!(),
                 }
             }
 
@@ -124,12 +118,9 @@ impl Renderer1 {
         });
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
         //rintln!("Animator::update()");
         // Rotate 2 radians per second.
         //self.rotation += 2.0 * args.dt;
     }
-}
-
-pub fn main() {
 }
