@@ -9,6 +9,7 @@ pub mod barnsley_fern_animated;
 pub mod barnsley_fern_raster;
 pub mod color;
 pub mod renderer;
+pub mod renderer_1;
 pub mod try_fractal;
 pub mod try_renderer;
 

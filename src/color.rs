@@ -1,6 +1,6 @@
 pub type Color = [f32; 4];
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Color1 {
     r: f32,
     g: f32,
@@ -8,7 +8,7 @@ pub struct Color1 {
     a: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Color256 {
     r: u8,
     g: u8,
