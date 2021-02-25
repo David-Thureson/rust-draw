@@ -28,7 +28,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn display(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>) {
+    pub fn display(title: &str, width: f64, height: f64, back_color: Color1, frames: Vec<Frame>) {
         Self::display_additive(title, width, height, back_color, frames, false);
     }
 
@@ -132,9 +132,10 @@ impl Renderer {
             }
 
             for shape in shapes.iter() {
+                //bg!(&shape);
                 match shape {
-                    Shape::Circle { center_x, center_y, radius, color} => {
-                        let rect = [center_x - radius, center_y - radius, radius * 2.0, radius * 2.0];
+                    Shape::Circle { center, radius, color} => {
+                        let rect = [center.x - radius, center.y - radius, radius * 2.0, radius * 2.0];
                         let transform = c.transform;
                         ellipse((*color).into(), rect, transform, gl);
                         //ellipse([1.0, 1.0, 1.0, 1.0], *rect, transform, gl);

@@ -58,7 +58,7 @@ impl Color1 {
         Self::from_rgb(0.0, 0.0, 1.0)
     }
 
-    pub fn gradiant_one(&self, other: &Color1, step_count: usize, step_index: usize) -> Self {
+    pub fn gradiant_one(&self, other: &Self, step_count: usize, step_index: usize) -> Self {
         debug_assert!(step_index <= step_count);
         let step_count = step_count as f32;
         let step_index = step_index as f32;
@@ -70,7 +70,7 @@ impl Color1 {
         let g = self.g + (g_step_size * step_index);
         let b = self.b + (b_step_size * step_index);
         let a = self.a + (a_step_size * step_index);
-        Color1::from_rgba(r, g, b, a)
+        Self::from_rgba(r, g, b, a)
     }
 }
 

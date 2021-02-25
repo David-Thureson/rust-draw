@@ -43,13 +43,13 @@ fn first() {
         if frame_index == 0 || !additive {
             for anchor in anchors.iter() {
                 let (x, y) = anchor;
-                shapes.push(Shape::circle(*x, *y, anchor_radius, anchor_color.clone()));
+                shapes.push(Shape::circle_xy(*x, *y, anchor_radius, anchor_color.clone()));
             }
         }
         let point_index_start = if additive { frame_index * batch_size } else { 0 };
         for point_index in point_index_start..((frame_index + 1) * batch_size) {
             let (x, y) = points[point_index];
-            shapes.push(Shape::circle(x, y, point_radius, point_color.clone()));
+            shapes.push(Shape::circle_xy(x, y, point_radius, point_color.clone()));
         }
         frames.push(Frame::new(shapes, frame_seconds));
     }

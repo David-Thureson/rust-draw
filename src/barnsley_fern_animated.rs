@@ -28,7 +28,7 @@ pub fn main() {
             // let color = point_color.clone();
             let point_frame_index = point_index / batch_size;
             let color = point_color.gradiant_one(&point_color_end, frame_count, point_frame_index);
-            shapes.push(Shape::circle(x, y, point_radius, color));
+            shapes.push(Shape::circle_xy(x, y, point_radius, color));
         }
         frames.push(Frame::new(shapes, frame_seconds));
     }
