@@ -1,3 +1,4 @@
+#![feature(assoc_char_funcs)]
 extern crate euclid;
 extern crate glutin_window;
 extern crate graphics;
@@ -8,6 +9,7 @@ pub mod animation_test;
 pub mod animator;
 pub mod barnsley_fern_animated;
 pub mod barnsley_fern_raster;
+pub mod carpet;
 pub mod color;
 pub mod geometry;
 // pub mod renderer_1;
