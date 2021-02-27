@@ -5,6 +5,14 @@ pub struct PointF64 {
     pub(crate) y: f64,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Point<T>
+    where T: Copy + std::cmp::PartialOrd
+{
+    pub(crate) x: T,
+    pub(crate) y: T,
+}
+
 impl PointF64 {
     pub fn new(x: f64, y: f64) -> Self {
         Self {
@@ -22,6 +30,22 @@ impl PointF64 {
         let x = self.x + (x_step_size * step_index);
         let y = self.y + (y_step_size * step_index);
         Self::new(x, y)
+    }
+}
+
+impl <T> Point<T>
+    where T: Copy + std::cmp::PartialOrd
+{
+    pub fn new(x: T, y: T) -> Self {
+        Self {
+            x,
+            y,
+        }
+    }
+
+    pub fn fix_top_left_bottom_right(point1: &mut Point<T>, point2: &mut Point<T>) {
+        if point1.x > point2.x { std::mem::swap(&mut point1.x, &mut point2.x) };
+        if point1.y > point2.y { std::mem::swap(&mut point1.y, &mut point2.y) };
     }
 }
 
