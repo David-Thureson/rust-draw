@@ -9,10 +9,16 @@ pub enum Shape {
         center: PointF64,
         radius: f64,
         color: Color1,
+    },
+    Rectangle {
+        top_left: PointF64,
+        bottom_right: PointF64,
+        color: Color1,
     }
 }
 
 impl Shape {
+
     pub fn circle(center: PointF64, radius: f64, color: Color1) -> Shape {
         Shape::Circle {
             center,
@@ -25,6 +31,14 @@ impl Shape {
         Shape::circle(PointF64::new(center_x, center_y), radius, color)
     }
 
+    pub fn rectangle(top_left: PointF64, bottom_right: PointF64, color: Color1) -> Shape {
+        Shape::Rectangle {
+            top_left,
+            bottom_right,
+            color,
+        }
+    }
+
     pub fn gradiant_one(&self, other: &Self, step_count: usize, step_index: usize) -> Self {
         debug_assert!(step_index <= step_count);
         match (self, other) {
@@ -35,13 +49,14 @@ impl Shape {
                 let color = from_color.gradiant_one(to_color, step_count, step_index);
                 Self::circle(center, radius, color)
             },
-            // _ => panic!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn with_center(&self, new_center: PointF64) -> Self {
         match self {
-            Self::Circle { center: _, radius, color} => Self::circle(new_center, *radius, color.clone())
+            Self::Circle { center: _, radius, color} => Self::circle(new_center, *radius, color.clone()),
+            _ => unimplemented!(),
         }
     }
 
@@ -51,13 +66,15 @@ impl Shape {
 
     pub fn with_radius(&self, new_radius: f64) -> Self {
         match self {
-            Self::Circle { center, radius: _, color} => Self::circle(center.clone(), new_radius, color.clone())
+            Self::Circle { center, radius: _, color} => Self::circle(center.clone(), new_radius, color.clone()),
+            _ => unimplemented!(),
         }
     }
 
     pub fn with_color(&self, new_color: Color1) -> Self {
         match self {
-            Self::Circle { center, radius, color: _ } => Self::circle(center.clone(), *radius, new_color)
+            Self::Circle { center, radius, color: _ } => Self::circle(center.clone(), *radius, new_color),
+            Self::Rectangle { top_left, bottom_right, color: _ } => Self::rectangle(*top_left, *bottom_right, new_color),
         }
     }
 }

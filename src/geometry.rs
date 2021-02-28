@@ -1,5 +1,5 @@
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct PointF64 {
     pub(crate) x: f64,
     pub(crate) y: f64,

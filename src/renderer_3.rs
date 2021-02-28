@@ -140,6 +140,11 @@ impl Renderer {
                         ellipse((*color).into(), rect, transform, gl);
                         //ellipse([1.0, 1.0, 1.0, 1.0], *rect, transform, gl);
                     },
+                    Shape::Rectangle { top_left, bottom_right, color} => {
+                        let rect = [top_left.x, top_left.y, bottom_right.x - top_left.x, bottom_right.y - top_left.y];
+                        let transform = c.transform;
+                        rectangle((*color).into(), rect, transform, gl);
+                    }
                     // _ => unimplemented!(),
                 }
             }
