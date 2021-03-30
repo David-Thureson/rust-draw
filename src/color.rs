@@ -1,3 +1,5 @@
+use rand::{Rng, thread_rng};
+
 pub type Color = [f32; 4];
 
 #[derive(Clone, Copy, Debug)]
@@ -56,6 +58,14 @@ impl Color1 {
 
     pub fn blue() -> Self {
         Self::from_rgb(0.0, 0.0, 1.0)
+    }
+
+    pub fn random(a: f32) -> Self {
+        let mut rng = thread_rng();
+        let r = rng.gen_range(0.0..=1.0);
+        let g = rng.gen_range(0.0..=1.0);
+        let b = rng.gen_range(0.0..=1.0);
+        Self::from_rgba(r, g, b, a)
     }
 
     pub fn gradiant_one(&self, other: &Self, step_count: usize, step_index: usize) -> Self {

@@ -8,6 +8,12 @@ use util::format;
 pub fn main() {
     // first();
     draw_one(200, 2.0, 7, 0.68);
+    // test_point_in_wedge();
+}
+
+pub enum CarpetAlgorithm {
+    Simple,
+    Wedge,
 }
 
 #[derive(Clone, Copy)]
@@ -22,6 +28,7 @@ pub struct Carpet {
     size: usize,
     min_length: usize,
     mult: f32,
+    algorithm: CarpetAlgorithm,
     record_events: bool,
     grid: Grid<usize>,
     count_square: usize,
@@ -42,13 +49,14 @@ impl Direction {
 }
 
 impl Carpet {
-    pub fn new(size: usize, min_length: usize, mult: f32, record_events: bool) -> Self {
+    pub fn new(size: usize, min_length: usize, mult: f32, algorithm: CarpetAlgorithm, record_events: bool) -> Self {
         let mut grid = Grid::new(size, size, 0);
         grid.record_events = record_events;
         Self {
             size,
             min_length,
             mult,
+            algorithm,
             record_events,
             grid,
             count_square: 0,
@@ -58,6 +66,13 @@ impl Carpet {
     }
 
     pub fn go(&mut self) {
+        match self.algorithm {
+            CarpetAlgorithm::Simple => self.go_simple(),
+            CarpetAlgorithm::Wedge => self.go_wedge(),
+        }
+    }
+
+    fn go_simple(&mut self) {
         // Algorithm: Draw a square around the edges of the carpet. Drawing a square means drawing
         // each side going counter-clockwise. Drawing a side means doing the side itself and then
         // drawing a smaller square starting at the endpoint.
@@ -133,6 +148,10 @@ impl Carpet {
             }
         }
     }
+
+    fn go_wedge(&mut self) {
+        unimplemented!();
+    }
 }
 
 /*
@@ -182,11 +201,12 @@ fn side(&mut self, mut x: usize, mut y: usize, direction: Direction, length: f32
 
 pub fn create_one(size: usize, min_length: usize, mult: f32) -> Carpet {
     let record_events = false;
-    let mut carpet = Carpet::new(size, min_length, mult, record_events);
+    let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::Simple, record_events);
     carpet.go();
     carpet
 }
 
+#[allow(dead_code)]
 fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) {
     let record_events = false;
 
@@ -215,7 +235,7 @@ fn first() {
     let min_length = 5;
     let mult = 0.68;
     let record_events = false;
-    let mut carpet = Carpet::new(size, min_length, mult, record_events);
+    let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::Simple, record_events);
 
     let start_time = Instant::now();
     carpet.go();
@@ -251,8 +271,7 @@ fn first() {
     Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
 }
 
-#[allow(dead_code)]
-fn count_to_char(count: &usize) -> char {
+pub fn count_to_char(count: &usize) -> char {
     //bg!(*count, *count as u32);
     match *count {
         0 => '\'',
@@ -263,8 +282,7 @@ fn count_to_char(count: &usize) -> char {
     }
 }
 
-#[allow(dead_code)]
-fn count_to_char_black_white(count: &usize) -> char {
+pub fn count_to_char_black_white(count: &usize) -> char {
     if count % 2 == 0 {
         '░'
     } else {
@@ -272,8 +290,7 @@ fn count_to_char_black_white(count: &usize) -> char {
     }
 }
 
-#[allow(dead_code)]
-fn count_to_color_black_white(count: &usize) -> Color1 {
+pub fn count_to_color_black_white(count: &usize) -> Color1 {
     if count % 2 == 0 {
         Color1::black()
     } else {
@@ -281,8 +298,7 @@ fn count_to_color_black_white(count: &usize) -> Color1 {
     }
 }
 
-#[allow(dead_code)]
-fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
+pub fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
     // Normalize the count to be within the range 0..1.
     let level = (count - min) as f32 / (max - min) as f32;
     //rintln!("count = {}, min = {}, max = {}, level = {}", count, min, max, level);
@@ -311,3 +327,4 @@ fn dbg_frame(label: &str, frame: &Frame) {
         }
     }
 }
+
