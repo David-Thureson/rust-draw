@@ -5,5 +5,5 @@ fn main() {
     // draw::barnsley_fern_raster::main();
     // draw::barnsley_fern_animated::main();
     // draw::try_transition::main();
-    draw::carpet::main();
+    draw::carpet::carpet::main();
 }

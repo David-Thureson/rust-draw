@@ -18,7 +18,7 @@ enum Direction {
     Right,
 }
 
-struct Carpet {
+pub struct Carpet {
     size: usize,
     min_length: usize,
     mult: f32,
@@ -180,33 +180,23 @@ fn side(&mut self, mut x: usize, mut y: usize, direction: Direction, length: f32
 }
 */
 
-fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) {
+pub fn create_one(size: usize, min_length: usize, mult: f32) -> Carpet {
     let record_events = false;
     let mut carpet = Carpet::new(size, min_length, mult, record_events);
+    carpet.go();
+    carpet
+}
+
+fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) {
+    let record_events = false;
 
     let start_time = Instant::now();
-    carpet.go();
+    let carpet = create_one(size, min_length, mult);
     dbg!(Instant::now() - start_time);
-    /*
-    println!("create grid seconds = {}, count_square = {}, count_side = {}, count_touch_rect = {}",
-             (Instant::now() - start_time).as_secs(),
-             format::format_count(carpet.count_square),
-             format::format_count(carpet.count_side),
-             format::format_count(carpet.count_touch_rect));
-    */
-    // let char_grid = Grid::new_from(&carpet.grid, count_to_char(&0), count_to_char);
-    // let char_grid = Grid::new_from(&carpet.grid, count_to_char_black_white);
-    // char_grid.print("A");
-    // let color_grid = Grid::new_from(&carpet_grid, count_to_color_black_white);
 
-    let (min, max) = carpet.grid.min_max();
-    println!("min = {}, max = {}", min, max);
-
-    let frame_count = 100;
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let frame_seconds = 0.1;
-
     let start_time = Instant::now();
     // let frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, count_to_color_black_white);
     // let func: FnOnce(&usize) -> Color1 = |count| count_to_color_gray(count, min, max);
@@ -218,6 +208,7 @@ fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) 
     Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
 }
 
+#[allow(dead_code)]
 fn first() {
     let size: usize = 800;
     let display_width_mult = 1.0;
@@ -293,11 +284,11 @@ fn count_to_color_black_white(count: &usize) -> Color1 {
 #[allow(dead_code)]
 fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
     // Normalize the count to be within the range 0..1.
-    let level = ((count - min) as f32 / (max - min) as f32);
+    let level = (count - min) as f32 / (max - min) as f32;
     //rintln!("count = {}, min = {}, max = {}, level = {}", count, min, max, level);
     debug_assert!(level <= 255.0);
     // Color1::from_rgb(level, level, level)
-    match(count % 2) {
+    match count % 2 {
         0 => Color1::from_rgb(level, 0.0, 0.0),
         //1 => Color1::from_rgb(0.0, level, 0.0),
         1 => Color1::from_rgb(0.0, 0.0, level),
