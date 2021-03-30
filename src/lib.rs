@@ -12,6 +12,7 @@ pub mod barnsley_fern_raster;
 pub mod carpet;
 pub mod color;
 pub mod geometry;
+pub mod grid;
 // pub mod renderer_1;
 // pub mod renderer_2;
 pub mod renderer_3;

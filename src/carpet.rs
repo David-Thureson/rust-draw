@@ -1,13 +1,14 @@
-use itertools::Itertools;
+use std::time::Instant;
 
 use crate::*;
 use renderer_3::*;
+use crate::grid::*;
+use util::format;
 
 pub fn main() {
-    first();
+    // first();
+    draw_one(200, 2.0, 7, 0.68);
 }
-
-type GridCoord = Point<usize>;
 
 #[derive(Clone, Copy)]
 enum Direction {
@@ -17,190 +18,15 @@ enum Direction {
     Right,
 }
 
-#[derive(Clone)]
-struct Grid<T>
-    where T: Clone + Sized
-{
-    width: usize,
-    height: usize,
-    default_value: T,
-    cell_values: Vec<Vec<T>>,
-    events: Vec<GridEvent<T>>,
+struct Carpet {
+    size: usize,
+    min_length: usize,
+    mult: f32,
     record_events: bool,
-}
-
-#[derive(Clone)]
-struct GridEvent<T>
-    where T: Clone
-{
-    cells: Vec<GridEventCell<T>>,
-}
-
-#[derive(Clone)]
-struct GridEventCell<T>
-    where T: Clone
-{
-    coord: GridCoord,
-    value: T,
-}
-
-impl <T> Grid<T>
-    where T: Clone
-{
-    pub fn new(width: usize, height: usize, default_value: T) -> Self {
-        let mut grid = Self {
-            width,
-            height,
-            default_value,
-            cell_values: vec![],
-            events: vec![],
-            record_events: true,
-        };
-        grid.create_cells();
-        grid
-    }
-
-    fn create_cells(&mut self) {
-        self.cell_values = Vec::with_capacity(self.height);
-        for _ in 0..self.height {
-            let mut row = Vec::with_capacity(self.width);
-            for _ in 0..self.width {
-                row.push(self.default_value.clone());
-            }
-            self.cell_values.push(row);
-        }
-    }
-
-    pub fn new_from<U>(source_grid: &Grid<U>, default_value: T, value_func: fn(&U) -> T) -> Self
-        where U: Clone
-    {
-        let mut grid = Self {
-            width: source_grid.width,
-            height: source_grid.height,
-            default_value,
-            cell_values: vec![],
-            events: vec![],
-            record_events: source_grid.record_events,
-        };
-        for source_row in source_grid.cell_values.iter() {
-            let row = source_row.iter().map(|x| value_func(x)).collect::<Vec<T>>();
-            grid.cell_values.push(row);
-        }
-        for source_event in source_grid.events.iter() {
-            let mut event: GridEvent<T> = GridEvent::new();
-            for source_event_cell in source_event.cells.iter() {
-                let event_cell = GridEventCell::new(source_event_cell.coord,value_func(&source_event_cell.value));
-                event.cells.push(event_cell);
-            }
-            grid.events.push(event);
-        }
-        grid
-    }
-
-    pub fn add_event(&mut self, event: GridEvent<T>) {
-        debug_assert!(self.record_events);
-        self.apply_event(&event);
-        self.events.push(event);
-    }
-
-    fn apply_event(&mut self, event: &GridEvent<T>) {
-        debug_assert!(self.record_events);
-        for event_cell in event.cells.iter() {
-            self.cell_values[event_cell.coord.y][event_cell.coord.x] = event_cell.value.clone();
-        }
-    }
-
-    pub fn get_xy(&self, x: usize, y: usize) -> T {
-        debug_assert!(x < self.width);
-        debug_assert!(y < self.height);
-        self.cell_values[y][x].clone()
-    }
-
-    pub fn get_coord(&self, coord: GridCoord) -> T {
-        self.get_xy(coord.x, coord.y)
-    }
-
-    pub fn set_coord(&mut self, coord: GridCoord, value: T) {
-        debug_assert!(!self.record_events);
-        self.cell_values[coord.y][coord.x] = value;
-    }
-
-    pub fn coord_is_in_grid(&self, coord: GridCoord) -> bool {
-        coord.x < self.width && coord.y < self.height
-    }
-
-    pub fn events_to_frames(&self, frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: fn(&T) -> Color1) -> Vec<Frame> {
-        let block_width = display_width / self.width as f64;
-        let block_height = display_height / self.height as f64;
-        let mut frames = vec![];
-        // let mut working_grid = Grid::new(self.width, self.height, self.default_value.clone());
-        //frames.push(working_grid.as_frame(block_width, block_height, frame_seconds, value_func));
-        // for event in self.events.iter() {
-        //    working_grid.apply_event(event);
-            //frames.push(working_grid.as_frame(block_width, block_height, frame_seconds, value_func));
-        //}
-        frames.push(self.as_frame(block_width, block_height, frame_seconds, value_func));
-        frames
-    }
-
-    fn as_frame(&self, block_width: f64, block_height: f64, frame_seconds: f64, value_func: fn(&T) -> Color1) -> Frame {
-        let mut shapes = vec![];
-        let mut block_x = 0.0;
-        let mut block_y = 0.0;
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let top_left = PointF64::new(block_x, block_y);
-                let bottom_right = PointF64::new(block_x + block_width, block_y + block_width);
-                let color = value_func(&self.get_xy(x, y));
-                shapes.push(Shape::rectangle(top_left, bottom_right, color));
-                block_x += block_width;
-            }
-            block_y += block_height;
-            block_x = 0.0;
-        }
-        let frame = Frame::new(shapes, frame_seconds);
-        frame
-    }
-
-}
-
-impl Grid<char> {
-    pub fn print(&self, label: &str) {
-        println!("\n{}", label);
-        for row in self.cell_values.iter() {
-            let line = row.iter().join("  ");
-            println!("{}", line);
-        }
-        println!();
-    }
-}
-
-impl <T> GridEvent<T>
-    where T: Clone
-{
-    pub fn new() -> Self {
-        Self {
-            cells: vec![],
-        }
-    }
-
-    pub fn set_cell(&mut self, coord: GridCoord, value: T) {
-        self.cells.push(GridEventCell::new(coord, value));
-    }
-
-    // pub fn set_rect(&mut self, x1: usize, y1: usize, x2: usize, y2: usize, color: Color1) {
-
-}
-
-impl <T> GridEventCell<T>
-    where T: Clone
-{
-    pub fn new(coord: GridCoord, value: T) -> Self {
-        Self {
-            coord,
-            value,
-        }
-    }
+    grid: Grid<usize>,
+    count_square: usize,
+    count_side: usize,
+    count_touch_rect: usize,
 }
 
 impl Direction {
@@ -215,14 +41,6 @@ impl Direction {
     }
 }
 
-struct Carpet {
-    size: usize,
-    min_length: usize,
-    mult: f32,
-    record_events: bool,
-    grid: Grid<usize>,
-}
-
 impl Carpet {
     pub fn new(size: usize, min_length: usize, mult: f32, record_events: bool) -> Self {
         let mut grid = Grid::new(size, size, 0);
@@ -233,6 +51,9 @@ impl Carpet {
             mult,
             record_events,
             grid,
+            count_square: 0,
+            count_side: 0,
+            count_touch_rect: 0,
         }
     }
 
@@ -249,6 +70,7 @@ impl Carpet {
     }
 
     fn square(&mut self, mut coord: GridCoord, mut direction: Direction, length: f32) {
+        self.count_square += 1;
         debug_assert!(self.grid.coord_is_in_grid(coord));
         for _ in 0..4 {
             coord = self.side(coord,direction, length);
@@ -257,6 +79,7 @@ impl Carpet {
     }
 
     fn side(&mut self, coord1: GridCoord, direction: Direction, length: f32) -> GridCoord {
+        self.count_side += 1;
         debug_assert!(self.grid.coord_is_in_grid(coord1));
         let length_int = length.round() as usize;
         let ln = length_int - 1;
@@ -299,6 +122,7 @@ impl Carpet {
     }
 
     fn touch_rect_no_event(&mut self, mut coord1: GridCoord, mut coord2: GridCoord) {
+        self.count_touch_rect += 1;
         debug_assert!(self.grid.coord_is_in_grid(coord1));
         debug_assert!(self.grid.coord_is_in_grid(coord2));
         Point::fix_top_left_bottom_right(&mut coord1, &mut coord2);
@@ -356,23 +180,79 @@ fn side(&mut self, mut x: usize, mut y: usize, direction: Direction, length: f32
 }
 */
 
-fn first() {
-    let size: usize = 20;
-    let min_length = 6;
-    let mult = 0.7;
+fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) {
     let record_events = false;
-    let mut carpet = Carpet::new(800, 3, 0.68, record_events);
+    let mut carpet = Carpet::new(size, min_length, mult, record_events);
+
+    let start_time = Instant::now();
     carpet.go();
-    let char_grid = Grid::new_from(&carpet.grid, count_to_char(&0), count_to_char);
+    dbg!(Instant::now() - start_time);
+    /*
+    println!("create grid seconds = {}, count_square = {}, count_side = {}, count_touch_rect = {}",
+             (Instant::now() - start_time).as_secs(),
+             format::format_count(carpet.count_square),
+             format::format_count(carpet.count_side),
+             format::format_count(carpet.count_touch_rect));
+    */
+    // let char_grid = Grid::new_from(&carpet.grid, count_to_char(&0), count_to_char);
     // let char_grid = Grid::new_from(&carpet.grid, count_to_char_black_white);
     // char_grid.print("A");
     // let color_grid = Grid::new_from(&carpet_grid, count_to_color_black_white);
 
+    let (min, max) = carpet.grid.min_max();
+    println!("min = {}, max = {}", min, max);
+
     let frame_count = 100;
-    let display_width = 800.0;
+    let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let frame_seconds = 0.1;
-    let mut frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, count_to_color_black_white);
+
+    let start_time = Instant::now();
+    // let frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, count_to_color_black_white);
+    // let func: FnOnce(&usize) -> Color1 = |count| count_to_color_gray(count, min, max);
+    let frames = carpet.grid.to_final_frame(display_width, display_height, frame_seconds, &|count| count_to_color_black_white(count));
+    println!("create frames seconds = {}", (Instant::now() - start_time).as_secs());
+
+    let back_color = count_to_color_black_white(&0);
+    let additive = false;
+    Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
+}
+
+fn first() {
+    let size: usize = 800;
+    let display_width_mult = 1.0;
+    let min_length = 5;
+    let mult = 0.68;
+    let record_events = false;
+    let mut carpet = Carpet::new(size, min_length, mult, record_events);
+
+    let start_time = Instant::now();
+    carpet.go();
+    println!("create grid seconds = {}, count_square = {}, count_side = {}, count_touch_rect = {}",
+        (Instant::now() - start_time).as_secs(),
+        format::format_count(carpet.count_square),
+        format::format_count(carpet.count_side),
+        format::format_count(carpet.count_touch_rect));
+
+    // let char_grid = Grid::new_from(&carpet.grid, count_to_char(&0), count_to_char);
+    // let char_grid = Grid::new_from(&carpet.grid, count_to_char_black_white);
+    // char_grid.print("A");
+    // let color_grid = Grid::new_from(&carpet_grid, count_to_color_black_white);
+
+    let (min, max) = carpet.grid.min_max();
+    println!("min = {}, max = {}", min, max);
+
+    let frame_count = 100;
+    let display_width = size as f64 * display_width_mult;
+    let display_height = display_width;
+    let frame_seconds = 0.1;
+
+    let start_time = Instant::now();
+    // let frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, count_to_color_black_white);
+    // let func: FnOnce(&usize) -> Color1 = |count| count_to_color_gray(count, min, max);
+    let frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, &|count| count_to_color_gray(count, min, max));
+    println!("create frames seconds = {}", (Instant::now() - start_time).as_secs());
+
     //bg!(&frames[1]);
     //bg_frame("1", &frames[1]);
     let back_color = count_to_color_black_white(&0);
@@ -380,6 +260,7 @@ fn first() {
     Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
 }
 
+#[allow(dead_code)]
 fn count_to_char(count: &usize) -> char {
     //bg!(*count, *count as u32);
     match *count {
@@ -391,6 +272,7 @@ fn count_to_char(count: &usize) -> char {
     }
 }
 
+#[allow(dead_code)]
 fn count_to_char_black_white(count: &usize) -> char {
     if count % 2 == 0 {
         '░'
@@ -399,6 +281,7 @@ fn count_to_char_black_white(count: &usize) -> char {
     }
 }
 
+#[allow(dead_code)]
 fn count_to_color_black_white(count: &usize) -> Color1 {
     if count % 2 == 0 {
         Color1::black()
@@ -407,6 +290,22 @@ fn count_to_color_black_white(count: &usize) -> Color1 {
     }
 }
 
+#[allow(dead_code)]
+fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
+    // Normalize the count to be within the range 0..1.
+    let level = ((count - min) as f32 / (max - min) as f32);
+    //rintln!("count = {}, min = {}, max = {}, level = {}", count, min, max, level);
+    debug_assert!(level <= 255.0);
+    // Color1::from_rgb(level, level, level)
+    match(count % 2) {
+        0 => Color1::from_rgb(level, 0.0, 0.0),
+        //1 => Color1::from_rgb(0.0, level, 0.0),
+        1 => Color1::from_rgb(0.0, 0.0, level),
+        _ => panic!(),
+    }
+}
+
+#[allow(dead_code)]
 fn dbg_frame(label: &str, frame: &Frame) {
     println!("\n{}", label);
     for shape in frame.shapes.iter() {
