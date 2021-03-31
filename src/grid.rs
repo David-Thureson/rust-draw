@@ -192,6 +192,8 @@ impl <T> Grid<T>
     #[inline(always)]
     fn point_in_wedge(&self, x: usize, y: usize) -> bool {
         debug_assert!(self.width == self.height, "This function is only for square grids, yet width = {} and height = {}", self.width, self.height);
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
         debug_assert!(x < self.width, "x = {} and width = {}", x, self.width);
         debug_assert!(y < self.height, "y = {} and height = {}", x, self.height);
         y < self.height / 2 && y >= x
@@ -200,6 +202,8 @@ impl <T> Grid<T>
     #[inline(always)]
     fn rectangle_intersects_wedge_xy(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> bool {
         debug_assert!(self.width == self.height, "This function is only for square grids, yet width = {} and height = {}", self.width, self.height);
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
         debug_assert!(x2 < self.width, "x2 = {} and width = {}", x2, self.width);
         debug_assert!(y2 < self.height, "y2 = {} and height = {}", y2, self.height);
         debug_assert!(x1 <= x2, "x2 = {}, less than x1 = {} so this is not a proper rectangle.", x2, x1);
@@ -211,6 +215,42 @@ impl <T> Grid<T>
     #[inline(always)]
     pub fn rectangle_intersects_wedge(&self, rectangle: &GridRectangle) -> bool {
         self.rectangle_intersects_wedge_xy(rectangle.x1, rectangle.y1, rectangle.x2, rectangle.y2)
+    }
+
+    pub fn reflect_copy_wedge(&mut self) {
+        debug_assert!(self.width == self.height, "This function is only for square grids, yet width = {} and height = {}", self.width, self.height);
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
+        let half = self.height / 2;
+        for y in 1..half {
+            for x in 0..y {
+                self.set_xy(y, x, self.get_xy(x, y));
+            }
+        }
+    }
+
+    pub fn reflect_copy_top_left_quarter(&mut self) {
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
+        let half_width = self.width / 2;
+        let x_last = self.width - 1;
+        for y in 1..self.height / 2 {
+            for x in 0..half_width {
+                self.set_xy(x_last - x, y, self.get_xy(x, y));
+            }
+        }
+    }
+
+    pub fn reflect_copy_top_half(&mut self) {
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
+        let y_last = self.height - 1;
+        for y in 1..self.height / 2 {
+            for x in 0..self.width {
+                self.set_xy(x, y_last - y, self.get_xy(x, y));
+                //self.cell_values[y_last - y][x] = self.cell_values[y][x].clone();
+            }
+        }
     }
 
     #[inline(always)]
@@ -334,9 +374,12 @@ impl GridRectangle {
 
 pub fn main() {
     // test_point_in_wedge();
-    test_rectangle_intersects_wedge();
+    // test_rectangle_intersects_wedge();
+    // test_reflect_copy();
+    test_reflect_copy_non_square();
 }
 
+#[allow(dead_code)]
 fn test_point_in_wedge() {
     //let size = 20;
     //let block_size = 20;
@@ -363,6 +406,7 @@ fn test_point_in_wedge() {
      */
 }
 
+#[allow(dead_code)]
 fn test_rectangle_intersects_wedge() {
     // let size = 20;
     // let rectangle_max_size = 4;
@@ -374,7 +418,6 @@ fn test_rectangle_intersects_wedge() {
 
     let rectangle_count = 200;
     let back_color = Color1::white();
-    let alpha = 0.5;
 
     let mut grid = Grid::new(size, size, Color1::white());
     grid.record_events = false;
@@ -393,5 +436,69 @@ fn test_rectangle_intersects_wedge() {
     let additive = false;
     Renderer::display_additive("Carpet", display_size, display_size, back_color, frames, additive);
      */
+}
+
+#[allow(dead_code)]
+fn test_reflect_copy() {
+    // let size = 20;
+    // let rectangle_max_size = 4;
+    // let block_size = 20;
+
+    let size = 1000;
+    let rectangle_max_size = 200;
+    let block_size = 1;
+
+    let rectangle_count = 200;
+    let back_color = Color1::white();
+
+    let mut grid = Grid::new(size, size, Color1::white());
+    grid.record_events = false;
+
+    print_elapsed_time("fill_grid_with_shapes", || fill_grid_with_shapes(&mut grid, rectangle_count, rectangle_max_size, rectangle_max_size));
+    print_elapsed_time("fill_grid_non_wedge", || fill_grid_non_wedge(&mut grid, &Color1::black()));
+    print_elapsed_time("reflect_copy_wedge", || grid.reflect_copy_wedge());
+    print_elapsed_time("reflect_copy_top_left_quarter", || grid.reflect_copy_top_left_quarter());
+    print_elapsed_time("reflect_copy_top_half", || grid.reflect_copy_top_half());
+
+    grid.display("test_reflect_copy()", block_size, back_color,&|value| *value);
+}
+
+#[allow(dead_code)]
+fn test_reflect_copy_non_square() {
+    let width = 2_000;
+    let height = 1_000;
+    let rectangle_max_size = 200;
+    let block_size = 1;
+
+    let rectangle_count = 200;
+    let back_color = Color1::white();
+
+    let mut grid = Grid::new(width, height, Color1::white());
+    grid.record_events = false;
+
+    print_elapsed_time("fill_grid_with_shapes", || fill_grid_with_shapes(&mut grid, rectangle_count, rectangle_max_size, rectangle_max_size));
+    print_elapsed_time("reflect_copy_top_left_quarter", || grid.reflect_copy_top_left_quarter());
+    print_elapsed_time("reflect_copy_top_half", || grid.reflect_copy_top_half());
+
+    grid.display("test_reflect_copy_non_square()", block_size, back_color,&|value| *value);
+}
+
+#[allow(dead_code)]
+fn fill_grid_with_shapes(grid: &mut Grid<Color1>, rectangle_count: usize, rectangle_max_width: usize, rectangle_max_height: usize) {
+    for _ in 0..rectangle_count {
+        let rectangle = grid.random_rectangle_limit(rectangle_max_width, rectangle_max_height);
+        grid.outline_rectangle(&rectangle, &Color1::random(0.5));
+    }
+}
+
+#[allow(dead_code)]
+fn fill_grid_non_wedge(grid: &mut Grid<Color1>, value: &Color1) {
+    for y in 0..grid.height {
+        for x in 0..grid.width {
+            if !grid.point_in_wedge(x, y) {
+                grid.set_xy(x, y, *value);
+            }
+        }
+    }
 }
 

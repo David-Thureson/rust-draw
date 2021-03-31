@@ -24,6 +24,7 @@ pub mod try_transition;
 pub use color::*;
 pub use geometry::*;
 pub use shape::*;
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct Frame {
@@ -61,3 +62,10 @@ pub fn gradient_f64(from: f64, to: f64, step_count: usize) -> Vec<f64> {
     v
 }
 
+pub fn print_elapsed_time<F>(label: &str, operation: F)
+    where F: FnOnce()
+{
+    let start_time = Instant::now();
+    operation();
+    println!("{}: {:?}", label, Instant::now() - start_time);
+}

@@ -208,8 +208,6 @@ pub fn create_one(size: usize, min_length: usize, mult: f32) -> Carpet {
 
 #[allow(dead_code)]
 fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32) {
-    let record_events = false;
-
     let start_time = Instant::now();
     let carpet = create_one(size, min_length, mult);
     dbg!(Instant::now() - start_time);
