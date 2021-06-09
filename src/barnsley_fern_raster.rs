@@ -42,7 +42,3 @@ pub fn main() {
 
     raster::save(&image, "fractal.png").unwrap();
 }
-
-
-
-

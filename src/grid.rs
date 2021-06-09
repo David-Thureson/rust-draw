@@ -153,14 +153,14 @@ impl <T> Grid<T>
     pub fn to_final_frame<F>(&self, display_width: f64, display_height: f64, frame_seconds: f64, value_func: &F) -> Vec<Frame>
         where F: Fn(&T) -> Color1
     {
-        let block_width = display_width / self.width as f64;
-        let block_height = display_height / self.height as f64;
-        vec![self.as_frame(block_width, block_height, frame_seconds, value_func)]
+        vec![self.as_frame(display_width, display_height, frame_seconds, value_func)]
     }
 
-    fn as_frame<F>(&self, block_width: f64, block_height: f64, frame_seconds: f64, value_func: &F) -> Frame
+    pub fn as_frame<F>(&self, display_width: f64, display_height: f64, frame_seconds: f64, value_func: &F) -> Frame
         where F: Fn(&T) -> Color1
     {
+        let block_width = display_width / self.width as f64;
+        let block_height = display_height / self.height as f64;
         let mut shapes = vec![];
         let mut block_x = 0.0;
         let mut block_y = 0.0;
@@ -215,6 +215,12 @@ impl <T> Grid<T>
     #[inline(always)]
     pub fn rectangle_intersects_wedge(&self, rectangle: &GridRectangle) -> bool {
         self.rectangle_intersects_wedge_xy(rectangle.x1, rectangle.y1, rectangle.x2, rectangle.y2)
+    }
+
+    pub fn complete_from_wedge(&mut self) {
+        self.reflect_copy_wedge();
+        self.reflect_copy_top_left_quarter();
+        self.reflect_copy_top_half();
     }
 
     pub fn reflect_copy_wedge(&mut self) {
@@ -331,7 +337,22 @@ impl Grid<usize> {
     }
 }
 
-impl <T> GridEvent<T>
+impl <T> PartialEq for Grid<T>
+    where T: Clone + PartialEq
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width
+        && self.height == other.height
+        && self.cell_values == other.cell_values
+    }
+}
+
+impl <T> Eq for Grid<T>
+    where T: Clone + PartialEq
+{
+}
+
+impl<T> GridEvent<T>
     where T: Clone
 {
     pub fn new() -> Self {
@@ -376,7 +397,8 @@ pub fn main() {
     // test_point_in_wedge();
     // test_rectangle_intersects_wedge();
     // test_reflect_copy();
-    test_reflect_copy_non_square();
+    // test_reflect_copy_non_square();
+    // test_compare();
 }
 
 #[allow(dead_code)]
@@ -482,6 +504,8 @@ fn test_reflect_copy_non_square() {
 
     grid.display("test_reflect_copy_non_square()", block_size, back_color,&|value| *value);
 }
+
+#[allow(dead_code)]
 
 #[allow(dead_code)]
 fn fill_grid_with_shapes(grid: &mut Grid<Color1>, rectangle_count: usize, rectangle_max_width: usize, rectangle_max_height: usize) {
