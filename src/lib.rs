@@ -1,4 +1,6 @@
 #![feature(assoc_char_funcs)]
+#![feature(duration_zero)]
+#![feature(div_duration)]
 extern crate euclid;
 extern crate glutin_window;
 extern crate graphics;

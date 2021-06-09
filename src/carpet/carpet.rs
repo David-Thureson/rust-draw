@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use crate::*;
 use renderer_3::*;
@@ -7,6 +7,7 @@ use util::format;
 use std::sync::mpsc;
 use std::thread;
 use std::collections::BTreeMap;
+use std::path::Path;
 
 const PATH_IMAGE_FILES: &str = r"C:\Graphics\Carpet";
 
@@ -17,6 +18,7 @@ pub fn main() {
     // try_draw_wedge();
     try_animation();
     // try_write_and_read_grid();
+    // optimize_build_grid();
 }
 
 pub enum CarpetAlgorithm {
@@ -42,6 +44,8 @@ pub struct Carpet {
     count_square: usize,
     count_side: usize,
     count_touch_rect: usize,
+    count_check_square_in_wedge: usize,
+    time_check_square_in_wedge: Duration,
 }
 
 impl CarpetAlgorithm {
@@ -87,6 +91,8 @@ impl Carpet {
             count_square: 0,
             count_side: 0,
             count_touch_rect: 0,
+            count_check_square_in_wedge: 0,
+            time_check_square_in_wedge: Duration::zero(),
         }
     }
 
@@ -104,41 +110,58 @@ impl Carpet {
         // each side going counter-clockwise. Drawing a side means doing the side itself and then
         // drawing a smaller square starting at the endpoint.
 
+        let start_time = Instant::now();
+
         // Start at the top left and draw a square, first going down across the left edge.
         let coord = GridCoord::new(0, 0);
         let direction = Direction::Down;
         let length = self.size as f32;
-        self.square(coord, direction, length);
+        self.square(coord, direction, length, false);
         if self.algorithm == CarpetAlgorithm::Wedge {
             self.grid.complete_from_wedge();
         }
+
+        let duration = Instant::now() - start_time;
+        let pct_in_check_wedge = self.time_check_square_in_wedge.div_duration_f64(duration);
+        // rintln!("Carpet::go(): overall = {:?}; check wedge count = {}; check wedge time = {:?}; pct check wedge = {}",
+        //         duration, format::format_count(self.count_check_square_in_wedge), self.time_check_square_in_wedge, pct_in_check_wedge);
     }
 
-    fn square(&mut self, mut coord: GridCoord, mut direction: Direction, length: f32) {
+    fn square(&mut self, mut coord: GridCoord, mut direction: Direction, length: f32, mut in_wedge: bool) {
         if self.algorithm == CarpetAlgorithm::Wedge {
-            // First see if any part of the planned square falls within the wedge.
-            let length_int = length.round() as usize;
-            let ln = length_int - 1;
-            let (x1, y1, x2, y2) = match direction {
-                Direction::Up    => (coord.x - ln, coord.y - ln, coord.x,      coord.y     ),
-                Direction::Left  => (coord.x - ln, coord.y,      coord.x,      coord.y + ln),
-                Direction::Down  => (coord.x,      coord.y,      coord.x + ln, coord.y + ln),
-                Direction::Right => (coord.x,      coord.y - ln, coord.x + ln, coord.y     ),
-            };
-            let square = GridRectangle::new(x1, y1, x2, y2);
-            if !self.grid.rectangle_intersects_wedge(&square) {
-                return
+            if !in_wedge {
+                self.count_check_square_in_wedge += 1;
+                let start_time = Instant::now();
+                // First see if any part of the planned square falls within the wedge.
+                let length_int = length.round() as usize;
+                let ln = length_int - 1;
+                let (x1, y1, x2, y2) = match direction {
+                    Direction::Up => (coord.x - ln, coord.y - ln, coord.x, coord.y),
+                    Direction::Left => (coord.x - ln, coord.y, coord.x, coord.y + ln),
+                    Direction::Down => (coord.x, coord.y, coord.x + ln, coord.y + ln),
+                    Direction::Right => (coord.x, coord.y - ln, coord.x + ln, coord.y),
+                };
+                in_wedge = self.grid.rectangle_inside_wedge_xy(x1, y1, x2, y2);
+                if in_wedge {
+                    self.time_check_square_in_wedge += Instant::now() - start_time;
+                } else {
+                    let intersects_wedge = self.grid.rectangle_intersects_wedge_xy(x1, y1, x2, y2);
+                    self.time_check_square_in_wedge += Instant::now() - start_time;
+                    if !intersects_wedge {
+                        return
+                    }
+                }
             }
         }
         self.count_square += 1;
         debug_assert!(self.grid.coord_is_in_grid(coord));
         for _ in 0..4 {
-            coord = self.side(coord,direction, length);
+            coord = self.side(coord,direction, length, in_wedge);
             direction = direction.ccw();
         }
     }
 
-    fn side(&mut self, coord1: GridCoord, direction: Direction, length: f32) -> GridCoord {
+    fn side(&mut self, coord1: GridCoord, direction: Direction, length: f32, in_wedge: bool) -> GridCoord {
         self.count_side += 1;
         debug_assert!(self.grid.coord_is_in_grid(coord1));
         let length_int = length.round() as usize;
@@ -163,7 +186,7 @@ impl Carpet {
         // Draw a smaller square starting at the endpoint of the side and turning counter-clockwise.
         let next_length = length * self.mult;
         if next_length.round() >= self.min_length as f32 {
-            self.square(coord2, direction.ccw(), next_length);
+            self.square(coord2, direction.ccw(), next_length, in_wedge);
         }
         coord2
     }
@@ -205,9 +228,13 @@ impl Carpet {
         //rintln!("Carpet::write_grid({}): {:?}", full_file_name, Instant::now() - start_time);
     }
 
-    pub fn read_or_make_grid(size: usize, min_length: usize, mult: f32) -> Grid<usize> {
+    pub fn read_grid_optional(size: usize, min_length: usize, mult: f32) -> Option<Grid<usize>> {
         let full_file_name = Self::full_file_name(size, min_length, mult);
-        match Grid::read_optional(&full_file_name) {
+        Grid::read_optional(&full_file_name)
+    }
+
+    pub fn read_or_make_grid(size: usize, min_length: usize, mult: f32) -> Grid<usize> {
+        match Carpet::read_grid_optional(size, min_length, mult) {
             Some(grid) => {
                 //rintln!("Carpet::read_or_make_grid({}): found", full_file_name);
                 grid
@@ -217,11 +244,18 @@ impl Carpet {
                 let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::Wedge, false);
                 carpet.go();
                 //rintln!("Carpet::read_or_make_grid({}): not found, created carpet: {:?}", full_file_name, Instant::now() - start_time);
+                let full_file_name = Self::full_file_name(size, min_length, mult);
                 carpet.grid.write(&full_file_name);
                 carpet.grid
             }
         }
     }
+
+    pub fn grid_exists(size: usize, min_length: usize, mult: f32) -> bool {
+        let full_file_name = Carpet::full_file_name(size, min_length, mult);
+        Path::new(&full_file_name).exists()
+    }
+
 }
 
 
@@ -433,7 +467,8 @@ fn try_animation() {
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.60, 0.65, 0.001)
     // animate_mult_parallel(800, 1.0, 1.0, 3, 0.63, 0.68, 0.001)
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.5, 0.60, 0.001)
-    animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001)
+    animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001, 25);
+    // animate_show_existing(400, 2.0, 2.0, 3, 0.7, 0.9, 0.001);
 }
 
 #[allow(dead_code)]
@@ -467,7 +502,7 @@ fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_le
 }
 
 #[allow(dead_code)]
-fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
+fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32, threads_max: usize) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let start_time = Instant::now();
@@ -481,8 +516,11 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
         mults.push(mult);
         mult += mult_step;
     }
+
+    let mut thread_count = 0;
     for mult in mults.iter() {
         let mult = *mult;
+        let grid_exists = Carpet::grid_exists(size, min_length, mult);
         let thread_tx = tx.clone();
         let thread = thread::spawn(move || {
             // let carpet = create_one(size, min_length, mult,CarpetAlgorithm::Wedge);
@@ -492,9 +530,16 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
         });
         threads.push(thread);
         frame_index += 1;
+        if !grid_exists {
+            thread_count += 1;
+            if thread_count == threads_max {
+                println!("Reached max threads.");
+                break;
+            }
+        }
     }
 
-    // Here, all the messages are collected
+    // Here, all the messages are collected.
     let mut grids = BTreeMap::new();
     for i in 0..mults.len() {
         // The `recv` method picks a message from the channel
@@ -504,7 +549,7 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
         println!("frame_index = {}; remaining frames = {}", format::format_count(frame_index), format::format_count(mults.len() - (i + 1)));
     }
 
-    // Wait for the threads to complete any remaining work
+    // Wait for the threads to complete any remaining work.
     for thread in threads {
         thread.join().unwrap();
     }
@@ -533,6 +578,40 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
 }
 
 #[allow(dead_code)]
+fn animate_show_existing(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
+    let display_width = size as f64 * display_width_mult;
+    let display_height = display_width;
+    let start_time = Instant::now();
+
+    let mut mults = vec![];
+    let mut mult = mult_min;
+    while mult <= mult_max {
+        mults.push(mult);
+        mult += mult_step;
+    }
+    let mut grids = vec![];
+    for mult in mults.iter() {
+        if let Some(grid) = Carpet::read_grid_optional(size, min_length, *mult) {
+            grids.push(grid);
+        };
+    }
+
+    let mut frames = vec![];
+    for grid in grids.iter() {
+        frames.push(grid.as_frame(display_width, display_height, frame_seconds,
+            // &|count| count_to_color_black_white(count)));
+            &|count| count_to_color_black_white_mod(count, 5)));
+            //&|count| count_to_color_gray(count, min, max)));
+    }
+    dbg!(Instant::now() - start_time);
+    println!("frame count = {}, skipped_count = {}", format::format_count(frames.len()), format::format_count(mults.len() - frames.len()));
+    let back_color = count_to_color_black_white(&0);
+    let additive = false;
+
+    Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
+}
+
+#[allow(dead_code)]
 fn try_write_and_read_grid() {
     /*
     let carpet = create_one(400, 5, 0.68,CarpetAlgorithm::Wedge);
@@ -546,4 +625,10 @@ fn try_write_and_read_grid() {
 
     Carpet::read_or_make_grid(400, 5, 0.681);
     Carpet::read_or_make_grid(400, 5, 0.681);
+}
+
+#[allow(dead_code)]
+fn optimize_build_grid() {
+    // Carpet::new(400, 3, 0.68, CarpetAlgorithm::Wedge, false).go();
+    draw_one(400, 2.0, 7, 0.68, CarpetAlgorithm::Wedge);
 }

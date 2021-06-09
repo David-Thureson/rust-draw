@@ -201,7 +201,19 @@ impl <T> Grid<T>
     }
 
     #[inline(always)]
-    fn rectangle_intersects_wedge_xy(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> bool {
+    pub fn rectangle_inside_wedge_xy(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> bool {
+        debug_assert!(self.width == self.height, "This function is only for square grids, yet width = {} and height = {}", self.width, self.height);
+        debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
+        debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
+        debug_assert!(x2 < self.width, "x2 = {} and width = {}", x2, self.width);
+        debug_assert!(y2 < self.height, "y2 = {} and height = {}", y2, self.height);
+        debug_assert!(x1 <= x2, "x2 = {}, less than x1 = {} so this is not a proper rectangle.", x2, x1);
+        debug_assert!(y1 <= y2, "y2 = {}, less than y1 = {} so this is not a proper rectangle.", y2, y1);
+        self.point_in_wedge(x1, y1) && self.point_in_wedge(x2, y1) && self.point_in_wedge(x2, y2) && self.point_in_wedge(x1, y2)
+    }
+
+    #[inline(always)]
+    pub fn rectangle_intersects_wedge_xy(&self, x1: usize, y1: usize, x2: usize, y2: usize) -> bool {
         debug_assert!(self.width == self.height, "This function is only for square grids, yet width = {} and height = {}", self.width, self.height);
         debug_assert_eq!(0, self.width % 2, "This function is only for grids with an even width, yet width = {}", self.width);
         debug_assert_eq!(0, self.height % 2, "This function is only for grids with an even height, yet height = {}", self.height);
@@ -211,6 +223,11 @@ impl <T> Grid<T>
         debug_assert!(y1 <= y2, "y2 = {}, less than y1 = {} so this is not a proper rectangle.", y2, y1);
         let half = self.height / 2;
         x1 < half && y1 < half && y2 >= x1
+    }
+
+    #[inline(always)]
+    pub fn rectangle_inside_wedge(&self, rectangle: &GridRectangle) -> bool {
+        self.rectangle_inside_wedge_xy(rectangle.x1, rectangle.y1, rectangle.x2, rectangle.y2)
     }
 
     #[inline(always)]
