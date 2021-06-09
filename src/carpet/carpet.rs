@@ -16,6 +16,7 @@ pub fn main() {
     // test_point_in_wedge();
     // try_draw_wedge();
     try_animation();
+    // try_write_and_read_grid();
 }
 
 pub enum CarpetAlgorithm {
@@ -192,7 +193,37 @@ impl Carpet {
             }
         }
     }
+
+    fn full_file_name(size: usize, min_length: usize, mult: f32) -> String {
+        format!("{}/carpet_{}_{}_{}.txt", PATH_IMAGE_FILES, size, min_length, (mult * 1_000.0) as usize)
+    }
+
+    pub fn write_grid(&self) {
+        let full_file_name = Self::full_file_name(self.size, self.min_length, self.mult);
+        //let start_time = Instant::now();
+        self.grid.write(&full_file_name);
+        //rintln!("Carpet::write_grid({}): {:?}", full_file_name, Instant::now() - start_time);
+    }
+
+    pub fn read_or_make_grid(size: usize, min_length: usize, mult: f32) -> Grid<usize> {
+        let full_file_name = Self::full_file_name(size, min_length, mult);
+        match Grid::read_optional(&full_file_name) {
+            Some(grid) => {
+                //rintln!("Carpet::read_or_make_grid({}): found", full_file_name);
+                grid
+            },
+            None => {
+                //et start_time = Instant::now();
+                let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::Wedge, false);
+                carpet.go();
+                //rintln!("Carpet::read_or_make_grid({}): not found, created carpet: {:?}", full_file_name, Instant::now() - start_time);
+                carpet.grid.write(&full_file_name);
+                carpet.grid
+            }
+        }
+    }
 }
+
 
 /*
 pub fn go(&mut self) {
@@ -396,9 +427,13 @@ fn try_draw_wedge() {
 
 #[allow(dead_code)]
 fn try_animation() {
-    // animate_mult(200, 4.0, 2.0,7, 0.675, 0.685, 0.001)
-    // animate_mult(200, 2.0, 2.0,4, 0.67, 0.69, 0.0001)
-    animate_mult_parallel(400, 2.0, 2.0,3, 0.65, 0.70, 0.0003)
+    // animate_mult(200, 4.0, 2.0, 7, 0.675, 0.685, 0.001)
+    // animate_mult(200, 2.0, 2.0, 4, 0.67, 0.69, 0.0001)
+    // animate_mult_parallel(400, 2.0, 1.0, 3, 0.65, 0.70, 0.0003)
+    // animate_mult_parallel(400, 2.0, 1.0, 3, 0.60, 0.65, 0.001)
+    // animate_mult_parallel(800, 1.0, 1.0, 3, 0.63, 0.68, 0.001)
+    // animate_mult_parallel(400, 2.0, 1.0, 3, 0.5, 0.60, 0.001)
+    animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001)
 }
 
 #[allow(dead_code)]
@@ -450,8 +485,10 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
         let mult = *mult;
         let thread_tx = tx.clone();
         let thread = thread::spawn(move || {
-            let carpet = create_one(size, min_length, mult,CarpetAlgorithm::Wedge);
-            thread_tx.send((frame_index, carpet.grid)).unwrap();
+            // let carpet = create_one(size, min_length, mult,CarpetAlgorithm::Wedge);
+            // thread_tx.send((frame_index, carpet.grid)).unwrap();
+            let grid = Carpet::read_or_make_grid(size, min_length, mult);
+            thread_tx.send((frame_index, grid)).unwrap();
         });
         threads.push(thread);
         frame_index += 1;
@@ -480,7 +517,7 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
             // let (min, max) = grid.min_max();
             frames.push(grid.as_frame(display_width, display_height, frame_seconds,
                                       // &|count| count_to_color_black_white(count)));
-                &|count| count_to_color_black_white_mod(count, 3)));
+                &|count| count_to_color_black_white_mod(count, 5)));
             //&|count| count_to_color_gray(count, min, max)));
         } else {
             skipped_count += 1;
@@ -495,3 +532,18 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
     Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
 }
 
+#[allow(dead_code)]
+fn try_write_and_read_grid() {
+    /*
+    let carpet = create_one(400, 5, 0.68,CarpetAlgorithm::Wedge);
+    let reference_grid = carpet.grid.clone();
+    carpet.write_grid();
+
+    let found_grid = Carpet::read_or_make_grid(400, 5, 0.68);
+    assert!(reference_grid == found_grid);
+    found_grid.write(&format!("{}/Test_Grid.txt", PATH_IMAGE_FILES));
+     */
+
+    Carpet::read_or_make_grid(400, 5, 0.681);
+    Carpet::read_or_make_grid(400, 5, 0.681);
+}

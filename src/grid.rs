@@ -4,6 +4,7 @@ use rand::{Rng, thread_rng};
 use crate::*;
 use crate::renderer_3::Renderer;
 use crate::carpet::carpet::count_to_color_black_white;
+use std::fs;
 
 pub type GridCoord = Point<usize>;
 
@@ -350,6 +351,43 @@ impl <T> PartialEq for Grid<T>
 impl <T> Eq for Grid<T>
     where T: Clone + PartialEq
 {
+}
+
+impl Grid<usize> {
+    pub fn write(&self, full_file_name: &str) {
+        // let start_time = Instant::now();
+        let content = format!("{}\n{}\n{}", self.width, self.height,
+            self.cell_values.iter()
+                .map(|row| row.iter().join("\t"))
+                .join("\n"));
+        fs::write(full_file_name, content).unwrap();
+        //rintln!("Grid::write({}): {:?}", full_file_name, Instant::now() - start_time);
+    }
+
+    pub fn read_optional(full_file_name: &str) -> Option<Grid<usize>> {
+        // let start_time = Instant::now();
+        let read_result = fs::read_to_string(full_file_name);
+        match read_result {
+            Ok(content) => {
+                //rintln!("Grid::read_optional({}): read file: {:?}", full_file_name, Instant::now() - start_time);
+                // let start_time = Instant::now();
+                let lines = content.split("\n").collect::<Vec<_>>();
+                let width = lines[0].parse::<usize>().unwrap();
+                let height= lines[1].parse::<usize>().unwrap();
+                let values = lines[2..].iter()
+                    .map(|line| line.split("\t").map(|value| value.parse::<usize>().unwrap()).collect::<Vec<_>>())
+                    .collect::<Vec<_>>();
+                let mut grid = Grid::new(width, height, 0);
+                grid.cell_values = values;
+                //rintln!("Grid::read_optional({}): build grid: {:?}", full_file_name, Instant::now() - start_time);
+                Some(grid)
+            },
+            Err(_) => {
+                //rintln!("Grid::read_optional({}): not found.", full_file_name);
+                None
+            },
+        }
+    }
 }
 
 impl<T> GridEvent<T>
