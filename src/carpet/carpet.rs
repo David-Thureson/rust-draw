@@ -19,11 +19,14 @@ pub fn main() {
     try_animation();
     // try_write_and_read_grid();
     // optimize_build_grid();
+    // try_algorithms();
 }
 
+#[derive(Clone)]
 pub enum CarpetAlgorithm {
     Simple,
     Wedge,
+    FlatSquare,
 }
 
 #[derive(Clone, Copy)]
@@ -41,6 +44,7 @@ pub struct Carpet {
     algorithm: CarpetAlgorithm,
     record_events: bool,
     grid: Grid<usize>,
+    cells: Vec<usize>,
     count_square: usize,
     count_side: usize,
     count_touch_rect: usize,
@@ -53,6 +57,7 @@ impl CarpetAlgorithm {
         match self {
             CarpetAlgorithm::Simple => "Simple",
             CarpetAlgorithm::Wedge => "Wedge",
+            CarpetAlgorithm::FlatSquare => "FlatSquare",
         }
     }
 }
@@ -88,6 +93,7 @@ impl Carpet {
             algorithm,
             record_events,
             grid,
+            cells: vec![],
             count_square: 0,
             count_side: 0,
             count_touch_rect: 0,
@@ -96,21 +102,19 @@ impl Carpet {
         }
     }
 
-    /*
     pub fn go(&mut self) {
         match self.algorithm {
-            CarpetAlgorithm::Simple => self.go_simple(),
-            CarpetAlgorithm::Wedge => self.go_wedge(),
+            CarpetAlgorithm::Simple | CarpetAlgorithm::Wedge => self.go_ccw(),
+            CarpetAlgorithm::FlatSquare => self.go_flat_square(),
         }
     }
-    */
 
-    fn go(&mut self) {
+    fn go_ccw(&mut self) {
         // Algorithm: Draw a square around the edges of the carpet. Drawing a square means drawing
         // each side going counter-clockwise. Drawing a side means doing the side itself and then
         // drawing a smaller square starting at the endpoint.
 
-        let start_time = Instant::now();
+        // let start_time = Instant::now();
 
         // Start at the top left and draw a square, first going down across the left edge.
         let coord = GridCoord::new(0, 0);
@@ -121,8 +125,8 @@ impl Carpet {
             self.grid.complete_from_wedge();
         }
 
-        let duration = Instant::now() - start_time;
-        let pct_in_check_wedge = self.time_check_square_in_wedge.div_duration_f64(duration);
+        // let duration = Instant::now() - start_time;
+        // let pct_in_check_wedge = self.time_check_square_in_wedge.div_duration_f64(duration);
         // rintln!("Carpet::go(): overall = {:?}; check wedge count = {}; check wedge time = {:?}; pct check wedge = {}",
         //         duration, format::format_count(self.count_check_square_in_wedge), self.time_check_square_in_wedge, pct_in_check_wedge);
     }
@@ -217,6 +221,71 @@ impl Carpet {
         }
     }
 
+    fn go_flat_square(&mut self) {
+        // Algorithm: Draw a square around the edges of the carpet, then draw four smaller squares
+        // within that. Minimize function calls.
+
+        // let start_time = Instant::now();
+
+        self.cells.reserve(self.size * self.size);
+        for _ in 0..self.size * self.size {
+            self.cells.push(0);
+        }
+
+        let mut square_sizes = vec![];
+        let mut one_size = self.size as f32;
+        while one_size >= self.min_length as f32 {
+            square_sizes.push(one_size.round() as usize);
+            one_size *= self.mult;
+        }
+
+        self.flat_square(0, &square_sizes, false, 0, 0, self.size - 1, self.size - 1);
+
+        for y in 0..self.size {
+            for x in 0..self.size {
+                self.grid.cell_values[y][x] = self.cells[(y * self.size) + x];
+            }
+        }
+        self.grid.complete_from_wedge();
+
+        //rintln!("Carpet::go_flat_square(): overall = {:?}", Instant::now() - start_time);
+    }
+
+    fn flat_square(&mut self, depth: usize, square_sizes: &Vec<usize>, mut inside_wedge: bool, x1: usize, y1: usize, x2: usize, y2: usize) {
+        if !inside_wedge {
+            inside_wedge = self.grid.rectangle_inside_wedge_xy(x1, y1, x2, y2);
+            if !inside_wedge {
+                let intersects_wedge = self.grid.rectangle_intersects_wedge_xy(x1, y1, x2, y2);
+                if !intersects_wedge {
+                    return
+                }
+            }
+        }
+        // Top and bottom of the square.
+        for x in x1..=x2 {
+            self.cells[(y1 * self.size) + x] += 1;
+            self.cells[(y2 * self.size) + x] += 1;
+        }
+        // Left and right edges of the square.
+        for y in y1..=y2 {
+            self.cells[(y * self.size) + x1] += 1;
+            self.cells[(y * self.size) + x2] += 1;
+        }
+
+        let next_depth = depth + 1;
+        if next_depth < square_sizes.len() {
+            let offset = square_sizes[next_depth] - 1;
+            // Smaller square at top-left of the current square.
+            self.flat_square(next_depth, square_sizes, inside_wedge, x1, y1, x1 + offset, y1 + offset);
+            // Smaller square at top-right of the current square.
+            self.flat_square(next_depth, square_sizes, inside_wedge, x2 - offset, y1, x2, y1 + offset);
+            // Smaller square at bottom-right of the current square.
+            self.flat_square(next_depth, square_sizes, inside_wedge, x2 - offset, y2 - offset, x2, y2);
+            // Smaller square at bottom-left of the current square.
+            self.flat_square(next_depth, square_sizes, inside_wedge, x1, y2 - offset, x1 + offset, y2);
+        }
+    }
+
     fn full_file_name(size: usize, min_length: usize, mult: f32) -> String {
         format!("{}/carpet_{}_{}_{}.txt", PATH_IMAGE_FILES, size, min_length, (mult * 1_000.0) as usize)
     }
@@ -241,7 +310,7 @@ impl Carpet {
             },
             None => {
                 //et start_time = Instant::now();
-                let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::Wedge, false);
+                let mut carpet = Carpet::new(size, min_length, mult, CarpetAlgorithm::FlatSquare, false);
                 carpet.go();
                 //rintln!("Carpet::read_or_make_grid({}): not found, created carpet: {:?}", full_file_name, Instant::now() - start_time);
                 let full_file_name = Self::full_file_name(size, min_length, mult);
@@ -521,27 +590,34 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
     for mult in mults.iter() {
         let mult = *mult;
         let grid_exists = Carpet::grid_exists(size, min_length, mult);
-        let thread_tx = tx.clone();
-        let thread = thread::spawn(move || {
-            // let carpet = create_one(size, min_length, mult,CarpetAlgorithm::Wedge);
-            // thread_tx.send((frame_index, carpet.grid)).unwrap();
-            let grid = Carpet::read_or_make_grid(size, min_length, mult);
-            thread_tx.send((frame_index, grid)).unwrap();
-        });
-        threads.push(thread);
+        if !grid_exists {
+            if thread_count < threads_max {
+                let file_name = Carpet::full_file_name(size, min_length, mult);
+                println!("Starting to build {}", file_name);
+            }
+        }
+        if grid_exists || thread_count < threads_max {
+            let thread_tx = tx.clone();
+            let thread = thread::spawn(move || {
+                // let carpet = create_one(size, min_length, mult,CarpetAlgorithm::Wedge);
+                // thread_tx.send((frame_index, carpet.grid)).unwrap();
+                let grid = Carpet::read_or_make_grid(size, min_length, mult);
+                thread_tx.send((frame_index, grid)).unwrap();
+            });
+            threads.push(thread);
+        }
         frame_index += 1;
         if !grid_exists {
             thread_count += 1;
             if thread_count == threads_max {
                 println!("Reached max threads.");
-                break;
             }
         }
     }
 
     // Here, all the messages are collected.
     let mut grids = BTreeMap::new();
-    for i in 0..mults.len() {
+    for i in 0..threads.len() {
         // The `recv` method picks a message from the channel
         // `recv` will block the current thread if there are no messages available
         let (frame_index, grid) = rx.recv().unwrap();
@@ -632,3 +708,21 @@ fn optimize_build_grid() {
     // Carpet::new(400, 3, 0.68, CarpetAlgorithm::Wedge, false).go();
     draw_one(400, 2.0, 7, 0.68, CarpetAlgorithm::Wedge);
 }
+
+#[allow(dead_code)]
+fn try_algorithms() {
+    // draw_one(400, 2.0, 7, 0.68, CarpetAlgorithm::FlatSquare);
+    // draw_one(20, 20.0, 10, 0.68, CarpetAlgorithm::FlatSquare);
+
+    let size = 400;
+    let min_length = 3;
+    let mult = 0.68;
+    for algorithm in [CarpetAlgorithm::Simple, CarpetAlgorithm::Wedge, CarpetAlgorithm::FlatSquare].iter() {
+        let start_time = Instant::now();
+        let mut carpet = Carpet::new(size, min_length, mult, algorithm.clone(), false);
+        carpet.go();
+        println!("{}: {:?}", algorithm.to_name(), Instant::now() - start_time);
+        carpet.grid.write(&format!("T:/Compare/{}", algorithm.to_name()));
+    }
+}
+
