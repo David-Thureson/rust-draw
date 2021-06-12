@@ -234,8 +234,14 @@ impl Carpet {
 
         let mut square_sizes = vec![];
         let mut one_size = self.size as f32;
+        let mut prev_rounded_size = 0;
         while one_size >= self.min_length as f32 {
-            square_sizes.push(one_size.round() as usize);
+            let rounded_size = one_size.round() as usize;
+            if rounded_size == prev_rounded_size {
+                break;
+            }
+            prev_rounded_size = rounded_size;
+            square_sizes.push(rounded_size);
             one_size *= self.mult;
         }
 
@@ -536,8 +542,14 @@ fn try_animation() {
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.60, 0.65, 0.001)
     // animate_mult_parallel(800, 1.0, 1.0, 3, 0.63, 0.68, 0.001)
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.5, 0.60, 0.001)
-    animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001, 25);
+    // animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001, 25);
     // animate_show_existing(400, 2.0, 2.0, 3, 0.7, 0.9, 0.001);
+    // animate_mult_parallel(200, 5, 4.0, 1.0, 7, 0.6, 0.8, 0.002, 1_000);
+    // animate_mult_parallel(200, 5, 2.0, 1.0, 7, 0.8, 0.9, 0.002, 1_000);
+    // animate_show_existing(200, 5, 4.0, 1.5, 7, 0.8, 0.9, 0.002);
+    // animate_mult_parallel(200, 4, 2.0, 0.75, 7, 0.53, 0.8, 0.002, 1_000);
+    // animate_mult_parallel(100, 4, 4.0, 1.0, 7, 0.53, 0.9, 0.002, 1_000);
+    animate_show_existing(100, 4, 4.0, 1.0, 7, 0.53, 0.9, 0.002);
 }
 
 #[allow(dead_code)]
@@ -571,7 +583,7 @@ fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_le
 }
 
 #[allow(dead_code)]
-fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32, threads_max: usize) {
+fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32, threads_max: usize) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let start_time = Instant::now();
@@ -638,7 +650,7 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
             // let (min, max) = grid.min_max();
             frames.push(grid.as_frame(display_width, display_height, frame_seconds,
                                       // &|count| count_to_color_black_white(count)));
-                &|count| count_to_color_black_white_mod(count, 5)));
+                &|count| count_to_color_black_white_mod(count, black_white_modulus)));
             //&|count| count_to_color_gray(count, min, max)));
         } else {
             skipped_count += 1;
@@ -654,7 +666,7 @@ fn animate_mult_parallel(size: usize, display_width_mult: f64, frame_seconds: f6
 }
 
 #[allow(dead_code)]
-fn animate_show_existing(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
+fn animate_show_existing(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let start_time = Instant::now();
@@ -676,7 +688,7 @@ fn animate_show_existing(size: usize, display_width_mult: f64, frame_seconds: f6
     for grid in grids.iter() {
         frames.push(grid.as_frame(display_width, display_height, frame_seconds,
             // &|count| count_to_color_black_white(count)));
-            &|count| count_to_color_black_white_mod(count, 5)));
+            &|count| count_to_color_black_white_mod(count, black_white_modulus)));
             //&|count| count_to_color_gray(count, min, max)));
     }
     dbg!(Instant::now() - start_time);
