@@ -1,5 +1,5 @@
 use crate::grid::Grid;
-use crate::algorithms::union_find::{UnionFind, QuickUnion};
+use crate::algorithms::union_find::WeightedQuickUnion;
 use rand::Rng;
 use crate::renderer_3::Renderer;
 use crate::color::Color1;
@@ -14,7 +14,7 @@ pub struct PercolationGrid {
     pub width: usize,
     pub height: usize,
     pub grid: Grid<bool>,
-    pub connections: QuickUnion,
+    pub connections: WeightedQuickUnion,
 }
 
 pub enum PercolationBlockState {
@@ -27,7 +27,7 @@ impl PercolationGrid {
     pub fn new(width: usize, height: usize) -> Self {
         let mut grid = Grid::new(width, height,false);
         grid.record_events = false;
-        let mut connections = QuickUnion::new((width * height) + 2);
+        let mut connections = WeightedQuickUnion::new((width * height) + 2, true);
         // Connect the top virtual node to every square in the top row, and the bottom virtual node
         // to every square in the bottom row.
         let top_node_index = 0;
@@ -137,8 +137,9 @@ fn try_animation() {
     let mut rng = rand::thread_rng();
     let total_seconds = 30.0;
     // let (width, height, display_width_mult, steps_per_frame) = (100, 100, 8.0, 1);
-    let (width, height, display_width_mult, steps_per_frame) = (500, 500, 2.0, 500);
+    // let (width, height, display_width_mult, steps_per_frame) = (500, 500, 2.0, 500);
     // let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 500);
+    let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 2_000);
     let extra_colors_max = 0;
     let approx_frames = (width * height) / 2;
     let frame_seconds = total_seconds / approx_frames as f64;
@@ -147,6 +148,7 @@ fn try_animation() {
     let mut perc = PercolationGrid::new(width, height);
     let mut frames = vec![];
     let mut color_grid_time = Duration::zero();
+    let mut color_grid_union_time = Duration::zero();
     let mut frame_time = Duration::zero();
     let start_time = Instant::now();
     let mut step_count = 0;
@@ -160,6 +162,7 @@ fn try_animation() {
             }
             if step_count % steps_per_frame == 0 || perc.percolates() {
                 let color_grid_start_time = Instant::now();
+                let color_grid_start_union_duration = perc.connections.union_time;
                 let mut color_grid = Grid::new(width, height, Color1::black());
                 color_grid.record_events = false;
                 for color_y in 0..height {
@@ -167,6 +170,8 @@ fn try_animation() {
                         color_grid.set_xy(color_x, color_y, block_color(&mut perc, &extra_colors, color_x, color_y));
                     }
                 }
+                let color_grid_end_union_duration = perc.connections.union_time;
+                color_grid_union_time += color_grid_end_union_duration - color_grid_start_union_duration;
                 color_grid_time += Instant::now() - color_grid_start_time;
                 let frame_start_time = Instant::now();
                 frames.push(color_grid.as_frame(display_width, display_height, frame_seconds, &|color| *color));
@@ -177,8 +182,8 @@ fn try_animation() {
     }
     let back_color = Color1::black();
     let additive = false;
-    println!("overall = {:?}; union = {:?}, connected = {:?}, color grids = {:?}; frames = {:?}",
-             Instant::now() - start_time, perc.connections.union_time, perc.connections.is_connected_time, color_grid_time, frame_time);
+    println!("overall = {:?}; union = {:?}, connected (build) = {:?}, connected (draw) = {:?}, color grids = {:?}; frames = {:?}",
+             Instant::now() - start_time, perc.connections.union_time - color_grid_union_time, color_grid_union_time, perc.connections.is_connected_time, color_grid_time, frame_time);
     Renderer::display_additive("Percolation", display_width, display_height, back_color, frames, additive);
 }
 
