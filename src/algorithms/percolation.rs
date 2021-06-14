@@ -3,6 +3,7 @@ use crate::algorithms::union_find::WeightedQuickUnion;
 use rand::Rng;
 use crate::renderer_3::Renderer;
 use crate::color::Color1;
+use util::*;
 use std::time::{Instant, Duration};
 
 pub fn main() {
@@ -135,14 +136,20 @@ fn try_percolation() {
 #[allow(dead_code)]
 fn try_animation() {
     let mut rng = rand::thread_rng();
+    // let total_seconds = 30.0;
     let total_seconds = 30.0;
     // let (width, height, display_width_mult, steps_per_frame) = (100, 100, 8.0, 1);
-    // let (width, height, display_width_mult, steps_per_frame) = (500, 500, 2.0, 500);
+    // let (width, height, display_width_mult, steps_per_frame) = (500, 500, 2.0, 5_000);
     // let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 500);
-    let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 2_000);
-    let extra_colors_max = 0;
-    let approx_frames = (width * height) / 2;
-    let frame_seconds = total_seconds / approx_frames as f64;
+    let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 250);
+    let start_render_threshold = 0.97;
+    let extra_colors_max = 200;
+    let approx_steps = (width * height) as f64 * 0.593;
+    let start_render_step = (approx_steps * start_render_threshold) as usize;
+    let approx_frames = (approx_steps / steps_per_frame as f64) * (1.0 - start_render_threshold);
+    let frame_seconds = total_seconds / approx_frames;
+    println!("width = {}, height = {}, approx_steps = {}, approx_frames = {}, frame_seconds = {}",
+        format::format_count(width), format::format_count(height), approx_steps, format::format_float(approx_frames, 0), frame_seconds);
     let display_width = width as f64 * display_width_mult;
     let display_height = height as f64 * display_width_mult;
     let mut perc = PercolationGrid::new(width, height);
@@ -152,32 +159,45 @@ fn try_animation() {
     let mut frame_time = Duration::zero();
     let start_time = Instant::now();
     let mut step_count = 0;
-    let mut extra_colors = vec![];
+    let mut extra_colors = Vec::with_capacity(extra_colors_max);
+    let color_min = 0.0;
+    let color_max = 1.0;
+    for _ in 0..extra_colors_max {
+        extra_colors.push(Color1::from_rgb(rng.gen_range(color_min..color_max),rng.gen_range(color_min..color_max),rng.gen_range(color_min..color_max)));
+    }
+    let mut component_colors= vec![];
     while !perc.percolates() {
         let x = rng.gen_range(0..width);
         let y = rng.gen_range(0..height);
         if perc.open(x, y) {
-            if extra_colors.len() < extra_colors_max {
-                extra_colors.push((perc.node_index(x, y), Color1::from_rgb(rng.gen_range(0.5..1.0),rng.gen_range(0.5..1.0),rng.gen_range(0.5..1.0))));
-            }
-            if step_count % steps_per_frame == 0 || perc.percolates() {
-                let color_grid_start_time = Instant::now();
-                let color_grid_start_union_duration = perc.connections.union_time;
-                let mut color_grid = Grid::new(width, height, Color1::black());
-                color_grid.record_events = false;
-                for color_y in 0..height {
-                    for color_x in 0..width {
-                        color_grid.set_xy(color_x, color_y, block_color(&mut perc, &extra_colors, color_x, color_y));
-                    }
-                }
-                let color_grid_end_union_duration = perc.connections.union_time;
-                color_grid_union_time += color_grid_end_union_duration - color_grid_start_union_duration;
-                color_grid_time += Instant::now() - color_grid_start_time;
-                let frame_start_time = Instant::now();
-                frames.push(color_grid.as_frame(display_width, display_height, frame_seconds, &|color| *color));
-                frame_time += Instant::now() - frame_start_time;
-            }
+            // if extra_colors.len() < extra_colors_max {
+            //     extra_colors.push((perc.node_index(x, y), Color1::from_rgb(rng.gen_range(0.5..1.0),rng.gen_range(0.5..1.0),rng.gen_range(0.5..1.0))));
+            //}
             step_count += 1;
+            if step_count >= start_render_step {
+                let is_last_frame = perc.percolates();
+                if step_count % steps_per_frame == 0 || is_last_frame {
+                    if component_colors.is_empty() {
+                        component_colors = perc.connections.get_roots_of_largest_components(extra_colors_max).iter().enumerate()
+                            .map(|(index, root)| (*root, extra_colors[index].clone())).collect::<Vec<_>>();
+                    }
+                    let color_grid_start_time = Instant::now();
+                    let color_grid_start_union_duration = perc.connections.union_time;
+                    let mut color_grid = Grid::new(width, height, Color1::black());
+                    color_grid.record_events = false;
+                    for color_y in 0..height {
+                        for color_x in 0..width {
+                            color_grid.set_xy(color_x, color_y, block_color(&mut perc, &component_colors, color_x, color_y, is_last_frame));
+                        }
+                    }
+                    let color_grid_end_union_duration = perc.connections.union_time;
+                    color_grid_union_time += color_grid_end_union_duration - color_grid_start_union_duration;
+                    color_grid_time += Instant::now() - color_grid_start_time;
+                    let frame_start_time = Instant::now();
+                    frames.push(color_grid.as_frame(display_width, display_height, frame_seconds, &|color| *color));
+                    frame_time += Instant::now() - frame_start_time;
+                }
+            }
         }
     }
     let back_color = Color1::black();
@@ -188,7 +208,7 @@ fn try_animation() {
 }
 
 #[inline]
-fn block_color(perc: &mut PercolationGrid, extra_colors: &Vec<(usize, Color1)>, x: usize, y: usize) -> Color1 {
+fn block_color(perc: &mut PercolationGrid, extra_colors: &Vec<(usize, Color1)>, x: usize, y: usize, is_last_frame: bool) -> Color1 {
     match perc.block_state(x, y) {
         PercolationBlockState::Blocked => Color1::black(),
         PercolationBlockState::Open => {
@@ -196,9 +216,11 @@ fn block_color(perc: &mut PercolationGrid, extra_colors: &Vec<(usize, Color1)>, 
             if perc.connections.is_connected(PercolationGrid::bottom_node_index(perc.width, perc.height), node_index) {
                 Color1::red()
             } else {
-                for i in 0..extra_colors.len() {
-                    if perc.connections.is_connected(extra_colors[i].0, node_index) {
-                        return extra_colors[i].1;
+                if !is_last_frame {
+                    for i in 0..extra_colors.len() {
+                        if perc.connections.is_connected(extra_colors[i].0, node_index) {
+                            return extra_colors[i].1;
+                        }
                     }
                 }
                 Color1::white()

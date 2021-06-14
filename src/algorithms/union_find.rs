@@ -4,6 +4,7 @@ use rand::Rng;
 use std::time::{Duration, Instant};
 
 use util::*;
+use std::cmp::Reverse;
 
 pub fn main() {
     // try_union_find();
@@ -156,10 +157,12 @@ impl WeightedQuickUnion {
             let root = if self.sizes[root_p] < self.sizes[root_q] {
                 self.nodes[root_p] = root_q;
                 self.sizes[root_q] += self.sizes[root_p];
+                self.sizes[root_p] = 0;
                 root_q
             } else {
                 self.nodes[root_q] = root_p;
                 self.sizes[root_p] += self.sizes[root_q];
+                self.sizes[root_q] = 0;
                 root_p
             };
             if self.path_compression {
@@ -228,12 +231,30 @@ impl WeightedQuickUnion {
         sum as f32 / self.nodes.len() as f32
     }
 
+    pub fn get_components(&self) -> Vec<Vec<usize>> {
+        let mut map = BTreeMap::new();
+        for i in 0..self.nodes.len() {
+            map.entry(self.root(i)).or_insert(vec![]).push(i);
+        }
+        map.values().map(|v| v.clone()).collect()
+    }
+
+    pub fn get_roots_of_largest_components(&self, limit: usize) -> Vec<usize> {
+        let mut components: Vec<(usize, usize)> = self.sizes.iter().enumerate()
+            .filter(|(_index, size)| **size > 1)
+            .map(|(index, size)| (index, *size))
+            .collect::<Vec<_>>();
+        components.sort_by_cached_key(|(_index, size)| Reverse(*size));
+        components.truncate(limit);
+        components.iter().take(limit).map(|(index, _size)| *index).collect()
+    }
+
     pub fn print_components(&self) {
         let mut map = BTreeMap::new();
         for i in 0..self.nodes.len() {
             map.entry(self.root(i)).or_insert(vec![]).push(i);
         }
-        println!("{}", map.values()
+        println!("{}", self.get_components().iter()
             .map(|component| format!("{{ {} }}", component.iter().join(", ")))
             .join(" "));
     }
