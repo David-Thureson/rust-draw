@@ -8,6 +8,7 @@ pub struct Color1 {
     pub g: f32,
     pub b: f32,
     pub a: f32,
+    pub for_render: [f32; 4],
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -28,13 +29,21 @@ impl Color1 {
         debug_assert!(b <= 1.0);
         debug_assert!(a >= 0.0);
         debug_assert!(a <= 1.0);
+        // let equal_key = format!("{}{}{}{}", Self::key_part(r), Self::key_part(g), Self::key_part(b), Self::key_part(a)).parse::<usize>().unwrap();
         Self {
             r,
             g,
             b,
-            a
+            a,
+            for_render: [r, g, b, a],
         }
     }
+
+    /*
+    fn key_part(x: f32) -> String {
+        ((x * 256.0).round() as u16).to_string()
+    }
+     */
 
     pub fn from_rgb(r: f32, g: f32, b: f32) -> Self {
         Self::from_rgba(r, g, b, 1.0)
@@ -92,10 +101,21 @@ impl From<Color256> for Color1 {
 }
 
 impl Into<[f32; 4]> for Color1 {
+    #[inline]
     fn into(self) -> [f32; 4] {
         [self.r, self.g, self.b, self.a]
     }
 }
+
+/*
+impl PartialEq for Color1 {
+    fn eq(&self, other: &Self) -> bool {
+        self.equal_key == other.equal_key
+    }
+}
+ */
+
+// impl Eq for Color1 {}
 
 impl Color256 {
     pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {

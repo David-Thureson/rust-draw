@@ -182,7 +182,7 @@ impl WeightedQuickUnion {
     }
 
     #[inline]
-    fn root(&self, mut p: usize) -> usize {
+    pub fn root(&self, mut p: usize) -> usize {
         while p != self.nodes[p] {
             p = self.nodes[p];
         }

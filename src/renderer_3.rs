@@ -12,6 +12,7 @@ pub struct Renderer {
     gl: GlGraphics, // OpenGL drawing backend.
     additive: bool,
     back_color: crate::Color1,
+    colors: Vec<Color1>,
     frames: Vec<Frame>,
     start_time: Instant,
     next_frame_time: Instant,
@@ -33,7 +34,10 @@ impl Renderer {
     }
 
     pub fn display_additive(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>, additive: bool) {
+        Self::display_additive_with_colors(title, width, height, back_color, frames, additive, vec![]);
+    }
 
+    pub fn display_additive_with_colors(title: &str, width: f64, height: f64, back_color: crate::Color1, frames: Vec<Frame>, additive: bool, colors: Vec<Color1>) {
         // Change this to OpenGL::V2_1 if not working.
         let opengl = OpenGL::V3_2;
 
@@ -52,6 +56,7 @@ impl Renderer {
             gl: GlGraphics::new(opengl),
             additive,
             back_color,
+            colors,
             frames,
             start_time: Instant::now(),
             next_frame_time,
@@ -125,6 +130,7 @@ impl Renderer {
         self.draw_count += 1;
         self.draw_shape_count += shapes.len();
         let start_time = Instant::now();
+        let colors = self.colors.clone();
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
             if clear_background {
@@ -141,9 +147,19 @@ impl Renderer {
                         //ellipse([1.0, 1.0, 1.0, 1.0], *rect, transform, gl);
                     },
                     Shape::Rectangle { top_left, bottom_right, color} => {
+                        // if *color != back_color {
                         let rect = [top_left.x, top_left.y, bottom_right.x - top_left.x, bottom_right.y - top_left.y];
                         let transform = c.transform;
                         rectangle((*color).into(), rect, transform, gl);
+                        // }
+                    }
+                    Shape::RectangleFast { x, y, width, height, color_index} => {
+                        // if self.additive || *color_index != 0 {
+                        if *color_index != 0 {
+                            let rect = [*x, *y, *width, *height];
+                            let transform = c.transform;
+                            rectangle(colors[*color_index].for_render, rect, transform, gl);
+                        }
                     }
                     // _ => unimplemented!(),
                 }

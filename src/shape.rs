@@ -14,6 +14,13 @@ pub enum Shape {
         top_left: PointF64,
         bottom_right: PointF64,
         color: Color1,
+    },
+    RectangleFast {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color_index: usize,
     }
 }
 
@@ -36,6 +43,16 @@ impl Shape {
             top_left,
             bottom_right,
             color,
+        }
+    }
+
+    pub fn rectangle_fast(x: f64, y: f64, width: f64, height: f64, color_index: usize) -> Shape {
+        Shape::RectangleFast {
+            x,
+            y,
+            width,
+            height,
+            color_index,
         }
     }
 
@@ -75,6 +92,7 @@ impl Shape {
         match self {
             Self::Circle { center, radius, color: _ } => Self::circle(center.clone(), *radius, new_color),
             Self::Rectangle { top_left, bottom_right, color: _ } => Self::rectangle(*top_left, *bottom_right, new_color),
+            Self::RectangleFast { .. } => panic!("Not implemented for RectangleFast since it doesn't have a Color1."),
         }
     }
 }
