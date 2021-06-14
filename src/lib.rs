@@ -7,6 +7,7 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
+pub mod algorithms;
 pub mod animation_test;
 pub mod animator;
 pub mod barnsley_fern_animated;
