@@ -8,7 +8,8 @@ use std::cmp::Reverse;
 
 pub fn main() {
     // try_union_find();
-    compare_performance();
+    // compare_performance();
+    compare_performance_fastest();
 }
 
 pub struct QuickFind {
@@ -151,6 +152,10 @@ impl WeightedQuickUnion {
     }
 
     pub fn union(&mut self, p: usize, q: usize) {
+        // if p == 100 || p == 101 || q == 100 || q == 101 {
+        //     dbg!(p, q);
+        // }
+
         // let start_time = Instant::now();
         let (root_p, root_q) = (self.root(p), self.root(q));
         if root_p != root_q {
@@ -323,4 +328,50 @@ fn compare_performance() {
                  wqup.union_time, wqup.is_connected_time, format::format_float(wqup.tree_depth_mean(), 2),
                  connected_count);
     }
+}
+
+#[allow(dead_code)]
+fn compare_performance_fastest() {
+    let mut rng = rand::thread_rng();
+    let mut sizes = vec![];
+    let mut size = 10;
+    let mult = 10;
+    for _ in 0..12 {
+        sizes.push(size);
+        size *= mult;
+    }
+    for size in sizes.iter() {
+        let size = *size;
+        let mut connected_count = 0;
+        let mut inputs = Vec::with_capacity(size);
+        let start_time = Instant::now();
+        for _ in 0..size {
+            inputs.push((rng.gen_range(0..size), rng.gen_range(0..size), rng.gen_range(0..size), rng.gen_range(0..size)));
+        }
+        let inputs_elapsed = Instant::now() - start_time;
+        let start_time = Instant::now();
+        let mut wqu = WeightedQuickUnion::new(size, true);
+        for i in 0..size {
+            wqu.union(inputs[i].0, inputs[i].1);
+            if wqu.is_connected(inputs[i].2, inputs[i].3) {
+                connected_count += 1;
+            }
+        }
+        println!("size = {}; inputs_elapsed = {:?}; elapsed = {:?}; connected_count = {}", format::format_count(size), inputs_elapsed, Instant::now() - start_time, format::format_count(connected_count));
+    }
+    /*
+    size = 10; inputs_elapsed = 7.4µs; elapsed = 9.6µs; connected_count = 4
+    size = 100; inputs_elapsed = 6.3µs; elapsed = 6.8µs; connected_count = 16
+    size = 1,000; inputs_elapsed = 31.1µs; elapsed = 32.7µs; connected_count = 167
+    size = 10,000; inputs_elapsed = 615.5µs; elapsed = 318.7µs; connected_count = 1,578
+    size = 100,000; inputs_elapsed = 4.215ms; elapsed = 4.7196ms; connected_count = 16,089
+    size = 1,000,000; inputs_elapsed = 30.7133ms; elapsed = 63.9324ms; connected_count = 162,187
+    size = 10,000,000; inputs_elapsed = 579.3957ms; elapsed = 1.586015s; connected_count = 1,619,168
+    size = 100,000,000; inputs_elapsed = 4.2080786s; elapsed = 37.9052902s; connected_count = 16,185,211
+    size = 1,000,000,000; inputs_elapsed = 29.9572552s; elapsed = 469.9692364s; connected_count = 161,908,437
+    It died from memory attempting 10 billion. One billion was using about 45GB.
+    I could use u32 and have up to 4,294,967,296 nodes, but four billion nodes would want about
+    90 GB (half size per node but four times as many nodes as the last successful test above).
+     */
+
 }
