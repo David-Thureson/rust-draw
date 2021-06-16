@@ -14,13 +14,13 @@ const COLOR_INDEX_FIRST_EXTRA: usize = 4;
 pub fn main() {
     // try_percolation();
     // try_animation();
-    try_animation_fast();
+    // try_animation_fast();
+    animate_precalc();
 }
 
 pub struct PercolationGrid {
     pub width: usize,
     pub height: usize,
-    pub square_size: usize,
     pub start_node_index: usize,
     pub end_node_index: usize,
     pub grid: Grid<bool>,
@@ -33,14 +33,15 @@ pub enum PercolationBlockState {
     Filled,
 }
 
+#[derive(Clone)]
 pub enum PercolationType {
     TopBottom,
-    TopLeftBottomRight,
-    CenterOut,
+    TopLeftBottomRight { radius: usize },
+    CenterOut { radius: usize },
 }
 
 impl PercolationGrid {
-    pub fn new(width: usize, height: usize, type_: PercolationType, square_size: usize) -> Self {
+    pub fn new(width: usize, height: usize, type_: PercolationType) -> Self {
         let mut grid = Grid::new(width, height,false);
         grid.record_events = false;
         let connections = WeightedQuickUnion::new((width * height) + 2, true);
@@ -51,7 +52,6 @@ impl PercolationGrid {
         let mut perc = Self {
             width,
             height,
-            square_size,
             grid,
             connections,
             start_node_index,
@@ -65,19 +65,19 @@ impl PercolationGrid {
                 perc.connections.union(end_node_index, bottom_row_first_node_index);
                 perc.open_bottom_row();
             },
-            PercolationType::TopLeftBottomRight => {
+            PercolationType::TopLeftBottomRight { radius } => {
                 perc.connections.union(start_node_index, 0);
-                perc.open_rectangle(0, 0, square_size, square_size);
+                perc.open_circle(0, 0, radius);
                 perc.connections.union(end_node_index, (height * width) - 1);
-                perc.open_rectangle(width - square_size, height - square_size, square_size, square_size);
+                perc.open_circle(width - 1, height - 1, radius);
             },
-            PercolationType::CenterOut => {
+            PercolationType::CenterOut { radius } => {
                 // Center square.
-                let x = (width - square_size) / 2;
-                let y = (height - square_size) / 2;
-                perc.connections.union(start_node_index, perc.node_index(x, y));
+                let center_x = (width / 2) - radius;
+                let center_y = (height / 2) - radius;
+                perc.connections.union(start_node_index, perc.node_index(center_x, center_y));
                 //rintln!("center node = {}, x = {}, y = {}, square_size = {}", center_node_index, x, y, square_size);
-                perc.open_rectangle(x, y, square_size, square_size);
+                perc.open_circle(center_x, center_y, radius);
                 // Top and bottom edges.
                 perc.connections.union(end_node_index, 0);
                 perc.open_top_row();
@@ -107,6 +107,26 @@ impl PercolationGrid {
             for x in left..left + width {
                 //rintln!("open_rectangle() for x = {}; y = {}; node = {}", x, y, self.node_index(x, y));
                 self.open(x, y);
+            }
+        }
+    }
+
+    pub fn open_circle(&mut self, center_x: usize, center_y: usize, radius: usize) {
+        let center_x = center_x as isize;
+        let center_y = center_y as isize;
+        let radius = radius as isize;
+        let start_x = (center_x - radius).max(0);
+        let start_y = (center_y - radius).max(0);
+        let end_x = (center_x + radius).min(self.width as isize - 1);
+        let end_y = (center_y + radius).min(self.height as isize - 1);
+        let r_squared = (radius * radius) as f32;
+        for y in start_y..=end_y {
+            for x in start_x..=end_x {
+                //rintln!("open_rectangle() for x = {}; y = {}; node = {}", x, y, self.node_index(x, y));
+                let dist_squared = ((x - center_x).pow(2) + (y - center_y).pow(2)) as f32;
+                if dist_squared <= r_squared {
+                    self.open(x as usize, y as usize);
+                }
             }
         }
     }
@@ -182,6 +202,32 @@ impl PercolationGrid {
         }
     }
 
+    pub fn run_to_completion(&mut self, max_seconds: usize) -> Vec<(usize, usize)> {
+        let start_time = Instant::now();
+        let end_time = start_time + Duration::from_secs_f64(max_seconds as f64);
+        let mut rng = rand::thread_rng();
+        let mut unions = vec![];
+        while !self.percolates() && Instant::now() < end_time {
+            let x = rng.gen_range(0..self.width);
+            let y = rng.gen_range(0..self.height);
+            if self.open(x, y) {
+                unions.push((x, y));
+            }
+        }
+        let time_msg = if self.percolates() { "complete" } else { "RAN OUT OF TIME" };
+        println!("run_to_completion(): [{}]; duration = {:?}; unions = {}", time_msg, Instant::now() - start_time, unions.len());
+        unions
+    }
+}
+
+impl PercolationType {
+    pub fn to_name(&self) -> &str {
+        match self {
+            PercolationType::TopBottom => "top-bottom",
+            PercolationType::TopLeftBottomRight { radius: _ } => "top-left-bottom-right",
+            PercolationType::CenterOut { radius: _ } => "center-out",
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -189,7 +235,7 @@ fn try_percolation() {
     let mut rng = rand::thread_rng();
     let width = 5;
     let height = 5;
-    let mut perc = PercolationGrid::new(width, height, PercolationType::TopBottom, 5);
+    let mut perc = PercolationGrid::new(width, height, PercolationType::TopBottom);
     println!();
     perc.connections.print_components();
     perc.print();
@@ -227,7 +273,7 @@ fn try_animation() {
              format::format_count(width), format::format_count(height), approx_steps, format::format_float(approx_frames, 0), frame_seconds);
     let display_width = width as f64 * display_width_mult;
     let display_height = height as f64 * display_width_mult;
-    let mut perc = PercolationGrid::new(width, height, percolation_type, 100);
+    let mut perc = PercolationGrid::new(width, height, percolation_type);
     let mut frames = vec![];
     let mut color_grid_time = Duration::zero();
     let mut color_grid_union_time = Duration::zero();
@@ -287,7 +333,7 @@ fn try_animation_fast() {
     let mut rng = rand::thread_rng();
     // let percolation_type = PercolationType::TopBottom;
     // let percolation_type = PercolationType::TopLeftBottomRight;
-    let percolation_type = PercolationType::CenterOut;
+    let percolation_type = PercolationType::CenterOut { radius: 100 };
     // let total_seconds = 30.0;
     let total_seconds = 60.0;
     // let (width, height, display_width_mult, steps_per_frame) = (100, 100, 8.0, 20);
@@ -297,7 +343,6 @@ fn try_animation_fast() {
     // let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 500);
     let (width, height, display_width_mult, steps_per_frame) = (1_000, 1_000, 1.0, 100);
     // let (width, height, display_width_mult, steps_per_frame) = (10, 10, 50.0, 1);
-    let square_size = 100;
     // let start_render_threshold = 0.7;
     let start_render_threshold = 0.97;
     // let start_render_threshold = 0.0;
@@ -312,7 +357,7 @@ fn try_animation_fast() {
              format::format_count(width), format::format_count(height), approx_steps, format::format_float(approx_frames, 0), frame_seconds);
     let display_width = width as f64 * display_width_mult;
     let display_height = height as f64 * display_width_mult;
-    let mut perc = PercolationGrid::new(width, height, percolation_type, square_size);
+    let mut perc = PercolationGrid::new(width, height, percolation_type);
     // let percolates = perc.percolates();
     //rintln!("start node = {}; end node = {}; percolates = {}", perc.start_node_index, perc.end_node_index, percolates);
     //perc.connections.print_components();
@@ -375,6 +420,104 @@ fn try_animation_fast() {
     let additive = false;
     println!("overall = {:?}; union = {:?}, connected (build) = {:?}, connected (draw) = {:?}, color grids = {:?}; frames = {:?}",
              Instant::now() - start_time, perc.connections.union_time - color_grid_union_time, color_grid_union_time, perc.connections.is_connected_time, color_grid_time, frame_time);
+    Renderer::display_additive_with_colors("Percolation", display_width, display_height, back_color, frames, additive, colors.clone());
+}
+
+#[allow(dead_code)]
+fn animate_precalc() {
+    let start_time = Instant::now();
+    let mut rng = rand::thread_rng();
+    let run_to_completion_max_seconds = 30;
+    let extra_colors_max = 200;
+    let animation_seconds = 30;
+    let frame_seconds_min = 0.25;
+    let (size, start_render_threshold, percolation_type) = (800, 0.75, PercolationType::TopBottom);
+    // let (size, start_render_threshold, percolation_type) = (800, 0.95, PercolationType::TopLeftBottomRight { radius: 50 });
+    // let (size, start_render_threshold, percolation_type) = (800, 0.999, PercolationType::CenterOut { radius: 10 });
+    let (width, height) = (size, size);
+    println!("run_to_completion_max_seconds = {}, animation_seconds = {}, frame_seconds_min = {}",
+             run_to_completion_max_seconds, animation_seconds, format::format_float(frame_seconds_min, 2));
+    println!("size = {}, start_render_threshold = {}, percolation_type = {}",
+        format::format_count(size), format::format_float(start_render_threshold, 3), percolation_type.to_name());
+
+    let display_width_mult = if size >= 800 {
+        1.0
+    } else {
+        (800.0 / size as f64).floor()
+    };
+    let display_width = width as f64 * display_width_mult;
+    let display_height = height as f64 * display_width_mult;
+    println!("display_width_mult = {}, display_width = {}, display_height = {}",
+        display_width_mult as usize, format::format_count(display_width as usize), format::format_count(display_height as usize));
+
+    // Precalculate the number of steps.
+    let mut perc = PercolationGrid::new(size, size, percolation_type.clone());
+    let unions = perc.run_to_completion(run_to_completion_max_seconds);
+    let step_count = unions.len();
+    let start_render_step = (step_count as f64 * start_render_threshold) as usize;
+    let render_step_count = (step_count - start_render_step) + 1;
+    let frame_count_max = (animation_seconds as f64 / frame_seconds_min) as usize;
+    let steps_per_frame = (render_step_count as f64 / frame_count_max as f64).floor() as usize;
+    println!("step_count = {}, start_render_step = {}, render_step_count = {}, frame_count_max = {}, steps_per_frame = {}",
+             format::format_count(step_count), format::format_count(start_render_step),
+             format::format_count(render_step_count), format::format_count(frame_count_max),
+             format::format_count(steps_per_frame));
+
+    let mut frames = vec![];
+    let post_precalc_start_time = Instant::now();
+
+    let mut colors = Vec::with_capacity(extra_colors_max);
+    colors.push(Color1::black());
+    colors.push(Color1::white());
+    colors.push(Color1::blue());
+    colors.push(Color1::red());
+    let color_min = 0.0;
+    let color_max = 1.0;
+    for _ in 0..extra_colors_max {
+        colors.push(Color1::from_rgb(rng.gen_range(color_min..color_max),rng.gen_range(color_min..color_max),rng.gen_range(color_min..color_max)));
+    }
+
+    let mut color_grid_elapsed = Duration::zero();
+    let mut frame_elapsed = Duration::zero();
+    let mut largest_roots= vec![];
+
+    let mut perc = PercolationGrid::new(size, size, percolation_type);
+    for (step_index, (x, y)) in unions.iter().enumerate() {
+        perc.open(*x, *y);
+        let is_last_frame = step_index == step_count - 1;
+        if is_last_frame || (step_index >= start_render_step && step_index % steps_per_frame == 0) {
+            if largest_roots.is_empty() {
+                largest_roots = perc.connections.get_roots_of_largest_components(extra_colors_max);
+            }
+
+            let color_grid_start_time = Instant::now();
+            let mut color_grid = Grid::new(width, height, 0);
+            color_grid.record_events = false;
+            for color_y in 0..height {
+                for color_x in 0..width {
+                    color_grid.set_xy(color_x, color_y, block_color_index(&mut perc, &largest_roots, color_x, color_y, is_last_frame));
+                }
+            }
+            color_grid_elapsed += Instant::now() - color_grid_start_time;
+
+            let frame_start_time = Instant::now();
+            frames.push(color_grid.as_frame_color_index(display_width, display_height, frame_seconds_min as f64));
+            frame_elapsed += Instant::now() - frame_start_time;
+        }
+    }
+    // Adjust the frame seconds for the actual number of frames.
+    let frame_count = frames.len();
+    let frame_seconds = animation_seconds as f64 / frame_count as f64;
+    println!("frame_count = {}; frame_seconds = {}", format::format_count(frame_count), format::format_float(frame_seconds, 3));
+    frames.iter_mut().for_each(|frame| frame.seconds_to_next = frame_seconds);
+
+    let post_precalc_elapsed = Instant::now() - post_precalc_start_time;
+    let overall_elapsed= Instant::now() - start_time;
+    println!("overall = {:?}; post-precalc = {:?}, color grids = {:?}; frames = {:?}",
+             overall_elapsed, post_precalc_elapsed, color_grid_elapsed, frame_elapsed);
+
+    let additive = false;
+    let back_color = Color1::black();
     Renderer::display_additive_with_colors("Percolation", display_width, display_height, back_color, frames, additive, colors.clone());
 }
 
