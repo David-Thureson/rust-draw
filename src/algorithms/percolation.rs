@@ -21,6 +21,8 @@ pub fn main() {
 pub struct PercolationGrid {
     pub width: usize,
     pub height: usize,
+    pub wrap_top_bottom: bool,
+    pub wrap_left_right: bool,
     pub start_node_index: usize,
     pub end_node_index: usize,
     pub grid: Grid<bool>,
@@ -52,26 +54,33 @@ impl PercolationGrid {
         let mut perc = Self {
             width,
             height,
+            wrap_top_bottom: false,
+            wrap_left_right: false,
             grid,
             connections,
             start_node_index,
             end_node_index,
         };
+
         let bottom_row_first_node_index = (height - 1) * width;
         match type_ {
             PercolationType::TopBottom => {
+                perc.wrap_left_right = true;
                 perc.connections.union(start_node_index, 0);
                 perc.open_top_row();
                 perc.connections.union(end_node_index, bottom_row_first_node_index);
                 perc.open_bottom_row();
             },
             PercolationType::TopLeftBottomRight { radius } => {
+                perc.wrap_left_right = true;
                 perc.connections.union(start_node_index, 0);
                 perc.open_circle(0, 0, radius);
                 perc.connections.union(end_node_index, (height * width) - 1);
                 perc.open_circle(width - 1, height - 1, radius);
             },
             PercolationType::CenterOut { radius } => {
+                perc.wrap_top_bottom = true;
+                perc.wrap_left_right = true;
                 // Center square.
                 let center_x = (width / 2) - radius;
                 let center_y = (height / 2) - radius;
@@ -81,8 +90,8 @@ impl PercolationGrid {
                 // Top and bottom edges.
                 perc.connections.union(end_node_index, 0);
                 perc.open_top_row();
-                perc.connections.union(end_node_index, bottom_row_first_node_index);
-                perc.open_bottom_row();
+                // perc.connections.union(end_node_index, bottom_row_first_node_index);
+                // perc.open_bottom_row();
                 // Left edge. Right edge is not necessary because of wrapping.
                 perc.open_left_edge();
             },
@@ -137,36 +146,96 @@ impl PercolationGrid {
             return false;
         }
         self.grid.set_xy(x, y, true);
-        let connection_index = self.node_index(x, y);
+        let node_index = self.node_index(x, y);
+        /*
         // Up.
         if y > 0 && self.grid.get_xy(x, y - 1) {
-            self.connections.union(connection_index, connection_index - self.width);
+            self.connections.union(node_index, node_index - self.width);
         }
         // Right.
         if x < self.width - 1 && self.grid.get_xy(x + 1, y)  {
-            self.connections.union(connection_index, connection_index + 1);
+            self.connections.union(node_index, node_index + 1);
         } else {
             // Try to wrap around to the left edge.
             if x == self.width - 1 && self.grid.get_xy(0, y) {
-                self.connections.union(connection_index, connection_index - (self.width - 1));
+                self.connections.union(node_index, node_index - (self.width - 1));
             }
         }
         // Down.
         if y < self.height - 1 && self.grid.get_xy(x, y + 1) {
-            self.connections.union(connection_index, connection_index + self.width);
+            self.connections.union(node_index, node_index + self.width);
         }
         // Left.
         if x > 0 && self.grid.get_xy(x - 1, y) {
-            self.connections.union(connection_index, connection_index - 1);
+            self.connections.union(node_index, node_index - 1);
         } else {
             // Try to wrap around to the right edge.
             if x == 0 && self.grid.get_xy(self.width - 1, y) {
-                self.connections.union(connection_index, connection_index + (self.width - 1));
+                self.connections.union(node_index, node_index + (self.width - 1));
+            }
+        }
+         */
+        // Up, right, down, left.
+        let x = x as isize;
+        let y = y as isize;
+        let mut adjacents = vec![];
+        adjacents.push((x    , y - 1)); // N
+        // adjacents.push((x + 1, y - 1)); // NE
+        adjacents.push((x + 1, y    )); // E
+        // adjacents.push((x + 1, y + 1)); // SE
+        adjacents.push((x    , y + 1)); // S
+        // adjacents.push((x - 1, y + 1)); // SW
+        adjacents.push((x - 1, y    )); // W
+        // adjacents.push((x - 1, y - 1)); // NW
+        //bg!(x, y, &adjacents);
+        for (adj_x, adj_y) in adjacents.iter() {
+            if let Some((adj_x, adj_y)) = self.resolve_x_y(*adj_x, *adj_y) {
+                //bg!(adj_x, adj_y);
+                if self.grid.get_xy(adj_x, adj_y) {
+                    self.connections.union(node_index, self.node_index(adj_x, adj_y))
+                }
             }
         }
         true
     }
 
+    #[inline]
+    fn resolve_x_y(&self, mut x: isize, mut y: isize) -> Option<(usize, usize)> {
+        let width = self.width as isize;
+        if x < 0 {
+            if self.wrap_left_right {
+                x += width;
+            } else {
+                return None;
+            }
+        } else {
+            if x >= width {
+                if self.wrap_left_right {
+                    x -= width;
+                } else {
+                    return None;
+                }
+            }
+        }
+        let height = self.height as isize;
+        if y < 0 {
+            if self.wrap_top_bottom {
+                y += height;
+            } else {
+                return None;
+            }
+        } else {
+            if y >= height {
+                if self.wrap_top_bottom {
+                    y -= height;
+                } else {
+                    return None;
+                }
+            }
+        }
+        Some((x as usize, y as usize))
+    }
+    
     pub fn percolates(&mut self) -> bool {
         self.connections.is_connected(self.start_node_index, self.end_node_index)
     }
@@ -431,19 +500,19 @@ fn animate_precalc() {
     let extra_colors_max = 200;
     let animation_seconds = 30;
     let frame_seconds_min = 0.25;
-    let (size, start_render_threshold, percolation_type) = (800, 0.75, PercolationType::TopBottom);
-    // let (size, start_render_threshold, percolation_type) = (800, 0.95, PercolationType::TopLeftBottomRight { radius: 50 });
-    // let (size, start_render_threshold, percolation_type) = (800, 0.999, PercolationType::CenterOut { radius: 10 });
-    let (width, height) = (size, size);
+    let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.97, PercolationType::TopBottom);
+    // let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.95, PercolationType::TopLeftBottomRight { radius: 50 });
+    // let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.97, PercolationType::CenterOut { radius: 50 });
     println!("run_to_completion_max_seconds = {}, animation_seconds = {}, frame_seconds_min = {}",
              run_to_completion_max_seconds, animation_seconds, format::format_float(frame_seconds_min, 2));
-    println!("size = {}, start_render_threshold = {}, percolation_type = {}",
-        format::format_count(size), format::format_float(start_render_threshold, 3), percolation_type.to_name());
+    println!("width = {}, height = {}, start_render_threshold = {}, percolation_type = {}",
+        format::format_count(width), format::format_count(height), format::format_float(start_render_threshold, 3), percolation_type.to_name());
 
-    let display_width_mult = if size >= 800 {
+    let largest_dimension = width.max(height);
+    let display_width_mult = if largest_dimension >= 800 {
         1.0
     } else {
-        (800.0 / size as f64).floor()
+        (800.0 / largest_dimension as f64).floor()
     };
     let display_width = width as f64 * display_width_mult;
     let display_height = height as f64 * display_width_mult;
@@ -451,7 +520,7 @@ fn animate_precalc() {
         display_width_mult as usize, format::format_count(display_width as usize), format::format_count(display_height as usize));
 
     // Precalculate the number of steps.
-    let mut perc = PercolationGrid::new(size, size, percolation_type.clone());
+    let mut perc = PercolationGrid::new(width, height, percolation_type.clone());
     let unions = perc.run_to_completion(run_to_completion_max_seconds);
     let step_count = unions.len();
     let start_render_step = (step_count as f64 * start_render_threshold) as usize;
@@ -481,11 +550,11 @@ fn animate_precalc() {
     let mut frame_elapsed = Duration::zero();
     let mut largest_roots= vec![];
 
-    let mut perc = PercolationGrid::new(size, size, percolation_type);
+    let mut perc = PercolationGrid::new(width, height, percolation_type);
     for (step_index, (x, y)) in unions.iter().enumerate() {
         perc.open(*x, *y);
         let is_last_frame = step_index == step_count - 1;
-        if is_last_frame || (step_index >= start_render_step && step_index % steps_per_frame == 0) {
+        if is_last_frame || (step_index >= start_render_step && (steps_per_frame == 0 || step_index % steps_per_frame == 0)) {
             if largest_roots.is_empty() {
                 largest_roots = perc.connections.get_roots_of_largest_components(extra_colors_max);
             }
