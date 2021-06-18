@@ -498,10 +498,10 @@ fn animate_precalc() {
     let mut rng = rand::thread_rng();
     let run_to_completion_max_seconds = 30;
     let extra_colors_max = 200;
-    let animation_seconds = 30;
+    let animation_seconds = 600;
     let frame_seconds_min = 0.25;
-    let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.97, PercolationType::TopBottom);
-    // let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.95, PercolationType::TopLeftBottomRight { radius: 50 });
+    // let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.97, PercolationType::TopBottom);
+    let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.95, PercolationType::TopLeftBottomRight { radius: 50 });
     // let (width, height, start_render_threshold, percolation_type) = (1_600, 800, 0.97, PercolationType::CenterOut { radius: 50 });
     println!("run_to_completion_max_seconds = {}, animation_seconds = {}, frame_seconds_min = {}",
              run_to_completion_max_seconds, animation_seconds, format::format_float(frame_seconds_min, 2));

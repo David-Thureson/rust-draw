@@ -8,160 +8,35 @@ use std::cmp::Reverse;
 use std::sync::{Arc, Mutex};
 
 pub fn main() {
-    // try_union_find();
-    // compare_performance();
-    // compare_performance_fastest();
-    // compare_performance_fixed_size();
-    // time_mutex();
-    time_partition();
+    try_union_single_thread();
 }
 
-pub struct QuickFind {
-    pub nodes: Vec<usize>,
-    pub union_time: Duration,
+pub struct ParallelQuickUnion {
+    pub nodes: Vec<Arc<Mutex<ParallelQuickUnionNode>>>,
 }
 
-impl QuickFind {
+struct ParallelQuickUnionNode {
+    root: usize,
+    size: usize,
+}
+
+impl ParallelQuickUnion {
     pub fn new(size: usize) -> Self {
         let mut nodes = Vec::with_capacity(size);
         for i in 0..size {
-            nodes.push(i);
+            nodes.push(Arc::new(Mutex::new(ParallelQuickUnionNode { root: i, size: 1 })));
         }
         Self {
             nodes,
-            union_time: Duration::zero(),
         }
-    }
-
-    pub fn union(&mut self, p: usize, q: usize) {
-        let start_time = Instant::now();
-        let comp_p = self.nodes[p];
-        let comp_q = self.nodes[q];
-        if comp_p != comp_q {
-            for i in 0..self.nodes.len() {
-                if self.nodes[i] == comp_p {
-                    self.nodes[i] = comp_q;
-                }
-            }
-        }
-        self.union_time += Instant::now() - start_time;
-    }
-
-    pub fn is_connected(&self, p: usize, q: usize) -> bool {
-        self.nodes[p] == self.nodes[q]
-    }
-
-    pub fn print_components(&self) {
-        let mut map = BTreeMap::new();
-        for (i, value) in self.nodes.iter().enumerate() {
-            map.entry(value).or_insert(vec![]).push(i);
-        }
-        println!("{}", map.values()
-            .map(|component| format!("{{ {} }}", component.iter().join(", ")))
-            .join(" "));
-    }
-}
-
-pub struct QuickUnion {
-    pub nodes: Vec<usize>,
-    pub union_time: Duration,
-    pub is_connected_time: Duration,
-}
-
-impl QuickUnion {
-    pub fn new(size: usize) -> Self {
-        let mut nodes = Vec::with_capacity(size);
-        for i in 0..size {
-            nodes.push(i);
-        }
-        Self {
-            nodes,
-            union_time: Duration::zero(),
-            is_connected_time: Duration::zero(),
-        }
-    }
-
-    pub fn union(&mut self, p: usize, q: usize) {
-        let start_time = Instant::now();
-        let root_p = self.root(p);
-        let root_q = self.root(q);
-        if root_p != root_q {
-            self.nodes[root_p] = root_q;
-        }
-        self.union_time += Instant::now() - start_time;
-    }
-
-    //#[inline]
-    pub fn is_connected(&mut self, p: usize, q: usize) -> bool {
-        let start_time = Instant::now();
-        let is_connected = self.root(p) == self.root(q);
-        self.is_connected_time += Instant::now() - start_time;
-        is_connected
     }
 
     #[inline]
-    fn root(&self, mut p: usize) -> usize {
+    pub fn union(&mut self, p: usize, q: usize) -> bool {
         while p != self.nodes[p] {
             p = self.nodes[p];
         }
-        p
-    }
 
-    pub fn tree_depth_mean(&self) -> f32 {
-        let mut sum = 0;
-        for i in 0..self.nodes.len() {
-            let mut p = i;
-            while p != self.nodes[p] {
-                sum += 1;
-                p = self.nodes[p];
-            }
-        }
-        sum as f32 / self.nodes.len() as f32
-    }
-
-    pub fn print_components(&self) {
-        let mut map = BTreeMap::new();
-        for i in 0..self.nodes.len() {
-            map.entry(self.root(i)).or_insert(vec![]).push(i);
-        }
-        println!("{}", map.values()
-            .map(|component| format!("{{ {} }}", component.iter().join(", ")))
-            .join(" "));
-    }
-}
-
-pub struct WeightedQuickUnion {
-    pub nodes: Vec<usize>,
-    pub sizes: Vec<usize>,
-    pub path_compression: bool,
-    pub union_time: Duration,
-    pub is_connected_time: Duration,
-}
-
-impl WeightedQuickUnion {
-    pub fn new(size: usize, path_compression: bool) -> Self {
-        let mut nodes = Vec::with_capacity(size);
-        let mut sizes = Vec::with_capacity(size);
-        for i in 0..size {
-            nodes.push(i);
-            sizes.push(1);
-        }
-        Self {
-            nodes,
-            sizes,
-            path_compression,
-            union_time: Duration::zero(),
-            is_connected_time: Duration::zero(),
-        }
-    }
-
-    #[inline]
-    pub fn union(&mut self, p: usize, q: usize) {
-        // if p == 100 || p == 101 || q == 100 || q == 101 {
-        //     dbg!(p, q);
-        // }
-
-        // let start_time = Instant::now();
         let (root_p, root_q) = (self.root(p), self.root(q));
         if root_p != root_q {
             let root = if self.sizes[root_p] < self.sizes[root_q] {
@@ -337,6 +212,7 @@ fn compare_performance() {
 
 #[allow(dead_code)]
 fn compare_performance_fastest() {
+    let mut rng = rand::thread_rng();
     let mut sizes = vec![];
     let mut size = 10;
     let mult = 10;
@@ -346,28 +222,25 @@ fn compare_performance_fastest() {
     }
     for size in sizes.iter() {
         let size = *size;
-        println!("\nsize = {}", format::format_count(size));
-
+        // let mut connected_count = 0;
+        let mut inputs = Vec::with_capacity(size);
+        // let start_time = Instant::now();
+        for _ in 0..size {
+            inputs.push((rng.gen_range(0..size), rng.gen_range(0..size), rng.gen_range(0..size), rng.gen_range(0..size)));
+        }
+        // let inputs_elapsed = Instant::now() - start_time;
+        let start_time = Instant::now();
         let mut wqu = WeightedQuickUnion::new(size, true);
-
-        let pairs = random_x_y_pairs(size, size);
-        let start_time = Instant::now();
-        for pair in pairs {
-            wqu.union(pair.0, pair.1);
+        for i in 0..size {
+            wqu.union(inputs[i].0, inputs[i].1);
+            // if wqu.is_connected(inputs[i].2, inputs[i].3) {
+            //     connected_count += 1;
+            //}
         }
+        // println!("size = {}; inputs_elapsed = {:?}; elapsed = {:?}; connected_count = {}", format::format_count(size), inputs_elapsed, Instant::now() - start_time, format::format_count(connected_count));
         let elapsed = Instant::now() - start_time;
         let per_union = elapsed / size as u32;
-        println!("per union = {:?}; elapsed = {:?}", per_union, elapsed);
-
-        let pairs = random_x_y_pairs(size, size);
-        let start_time = Instant::now();
-        for pair in pairs {
-            wqu.is_connected(pair.0, pair.1);
-        }
-        let elapsed = Instant::now() - start_time;
-        let per_union = elapsed / size as u32;
-        println!("per is_connected = {:?}; elapsed = {:?}", per_union, elapsed);
-
+        println!("size = {}; per union = {:?}; elapsed = {:?}", format::format_count(size), per_union, elapsed);
     }
     /*
     size = 10; inputs_elapsed = 7.4µs; elapsed = 9.6µs; connected_count = 4
@@ -436,11 +309,11 @@ fn time_mutex() {
         // union[pair.0].lock().unwrap();
         // union[pair.1].lock().unwrap();
         match union[pair.0].try_lock() {
-            Ok(_) => {},
+            Ok(a) => {},
             Err(_) => { continue; },
         }
         match union[pair.1].try_lock() {
-            Ok(_) => {},
+            Ok(a) => {},
             Err(_) => { continue; },
         }
     }
@@ -449,111 +322,11 @@ fn time_mutex() {
 }
 
 #[allow(dead_code)]
-fn time_partition() {
-    let partition_count = 64;
-    let size_mult = 10;
-    let size_mult_sqrt = (size_mult as f32).sqrt();
-    let union_mult = 1.0;
-    let mut width = 10.0;
-    let mut height = 10.0;
-    let mut sizes = vec![];
-    for _ in 0..=4 {
-        sizes.push((width, height));
-        width *= size_mult_sqrt;
-        height *= size_mult_sqrt;
-    }
-    for (width, height) in sizes.iter() {
-        let (width, height) = (width.ceil() as usize, height.floor() as usize);
-        let size = width * height;
-        let nodes_per_partition = (size as f32 / partition_count as f32).ceil() as usize;
-        let union_count = (size as f32 * union_mult) as usize;
-        let unions_per_partition = union_count / partition_count;
-        println!("\npartition_count = {}, width = {}, height = {}, size = {}, nodes_per_partition = {}, union_count = {}, unions_per_partition = {}",
-                 format::format_count(partition_count),
-                 format::format_count(width),
-                 format::format_count(height),
-                 format::format_count(size),
-                 format::format_count(nodes_per_partition),
-                 format::format_count(union_count),
-                 format::format_count(unions_per_partition));
-        // debug_assert_eq!(0, size % partition_count);
-
-        let pairs = random_x_y_pairs_like_percolation(width, height,union_count);
-
-        let start_time = Instant::now();
-        let mut partitions = Vec::with_capacity(partition_count + 1);
-        for i in 0..=partition_count {
-            let offset= if i == partition_count { 0 } else { i * unions_per_partition };
-            partitions.push((offset, Vec::with_capacity(unions_per_partition)));
-        }
-        for pair in pairs {
-            let p_partition_index = pair.0 / nodes_per_partition;
-            let q_partition_index = pair.1 / nodes_per_partition;
-            debug_assert!(p_partition_index < partition_count);
-            debug_assert!(q_partition_index < partition_count);
-            let partition_index = if p_partition_index == q_partition_index { p_partition_index } else { partition_count };
-            // For testing, don't do the offset yet.
-            partitions[partition_index].1.push(pair);
-        }
-        let elapsed = Instant::now() - start_time;
-        println!("create partitions = {:?}", elapsed);
-
-        for (index, (_, nodes)) in partitions.iter().enumerate() {
-            let label = if index == partition_count { "x".to_string() } else { index.to_string() };
-            let pct = nodes.len() as f32 / union_count as f32;
-            if index == partition_count {
-                println!("p {}: {}", label, format::format_float(pct, 5));
-            }
-        }
-
-        let start_time = Instant::now();
-        let mut unions = Vec::with_capacity(partition_count);
-        for _ in 0..partition_count {
-            unions.push(WeightedQuickUnion::new(nodes_per_partition, true));
-        }
-        let elapsed = Instant::now() - start_time;
-        println!("create unions = {:?}", elapsed);
-
-        println!("{}", unions.len());
-    }
-}
-
-#[allow(dead_code)]
 fn random_x_y_pairs(size: usize, pair_count: usize) -> Vec<(usize, usize)> {
     let mut rng = rand::thread_rng();
     let mut pairs = Vec::with_capacity(pair_count);
     for _ in 0..pair_count {
         pairs.push((rng.gen_range(0..size), rng.gen_range(0..size)));
-    }
-    pairs
-}
-
-#[allow(dead_code)]
-fn random_x_y_pairs_like_percolation(width: usize, height: usize, pair_count: usize) -> Vec<(usize, usize)> {
-    let width = width as isize;
-    let height = height as isize;
-    let mut rng = rand::thread_rng();
-    let mut pairs = Vec::with_capacity(pair_count);
-    for _ in 0..pair_count {
-        let x0 = rng.gen_range(0isize..width);
-        let y0 = rng.gen_range(0isize..height);
-        let direction = rng.gen_range(0..4);
-        let (mut x1, mut y1) = match direction {
-            0 => (x0    , y0 - 1), // Up
-            1 => (x0 + 1, y0    ), // Right
-            2 => (x0    , y0 + 1), // Down
-            3 => (x0 - 1, y0    ), // Left
-            _ => panic!("Unexpected value = {}", direction)
-        };
-        if x1 < 0 { x1 += width;  } else if x1 >= width  { x1 -= width;  }
-        if y1 < 0 { y1 += height; } else if y1 >= height { y1 -= height; }
-        let p = (y0 * width) + x0;
-        let q = (y1 * width) + x1;
-        debug_assert!(p >= 0);
-        debug_assert!(p < width * height);
-        debug_assert!(q >= 0);
-        debug_assert!(q < width * height);
-        pairs.push((p as usize, q as usize));
     }
     pairs
 }
