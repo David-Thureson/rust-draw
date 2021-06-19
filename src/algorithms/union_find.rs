@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use rand::Rng;
 use std::time::{Duration, Instant};
-
 use util::*;
 use std::cmp::Reverse;
 use std::sync::{Arc, Mutex};
@@ -227,6 +226,14 @@ impl WeightedQuickUnion {
             self.nodes[i] = root;
             i = next_i;
         }
+    }
+
+    pub fn union_list(&mut self, pairs: &[(usize, usize)]) {
+        pairs.iter().for_each(|(p, q)| self.union(*p, *q));
+    }
+
+    pub fn count_is_connected_list(&mut self, pairs: &[(usize, usize)]) -> usize {
+        pairs.iter().map(|(p, q)| if self.is_connected(*p, *q) { 1 } else { 0 }).sum()
     }
 
     pub fn tree_depth_mean(&self) -> f32 {
@@ -462,6 +469,7 @@ fn time_partition() {
         width *= size_mult_sqrt;
         height *= size_mult_sqrt;
     }
+
     for (width, height) in sizes.iter() {
         let (width, height) = (width.ceil() as usize, height.floor() as usize);
         let size = width * height;
@@ -519,7 +527,7 @@ fn time_partition() {
 }
 
 #[allow(dead_code)]
-fn random_x_y_pairs(size: usize, pair_count: usize) -> Vec<(usize, usize)> {
+pub fn random_x_y_pairs(size: usize, pair_count: usize) -> Vec<(usize, usize)> {
     let mut rng = rand::thread_rng();
     let mut pairs = Vec::with_capacity(pair_count);
     for _ in 0..pair_count {
@@ -529,7 +537,7 @@ fn random_x_y_pairs(size: usize, pair_count: usize) -> Vec<(usize, usize)> {
 }
 
 #[allow(dead_code)]
-fn random_x_y_pairs_like_percolation(width: usize, height: usize, pair_count: usize) -> Vec<(usize, usize)> {
+pub fn random_x_y_pairs_like_percolation(width: usize, height: usize, pair_count: usize) -> Vec<(usize, usize)> {
     let width = width as isize;
     let height = height as isize;
     let mut rng = rand::thread_rng();

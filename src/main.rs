@@ -7,6 +7,7 @@ fn main() {
     // draw::try_transition::main();
     // draw::carpet::carpet::main();
     // draw::grid::main();
-    draw::algorithms::union_find::main();
+    // draw::algorithms::union_find::main();
+    draw::algorithms::generic_union::main();
     // draw::algorithms::percolation::main();
 }
