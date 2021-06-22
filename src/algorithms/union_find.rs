@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use rand::Rng;
 use std::time::{Duration, Instant};
-use util::*;
 use std::cmp::Reverse;
 use std::sync::{Arc, Mutex};
+
+use crate::*;
 
 pub fn main() {
     // try_union_find();
@@ -183,7 +184,7 @@ impl WeightedQuickUnion {
     }
 
     #[inline]
-    pub fn is_connected(&mut self, p: usize, q: usize) -> bool {
+    pub fn is_connected(&self, p: usize, q: usize) -> bool {
         // let start_time = Instant::now();
         let is_connected = self.root(p) == self.root(q);
         // self.is_connected_time += Instant::now() - start_time;
@@ -335,9 +336,9 @@ fn compare_performance() {
         // qu.print_components();
         println!("uf union = {:?}; qu union = {:?}; qu con = {:?}, qu depth = {}, wqu union = {:?}; wqu con = {:?}, wqu depth = {}, wqup union = {:?}; wqup con = {:?}, wqup depth = {}, connected_count = {}",
                  qf.union_time,
-                 qu.union_time, qu.is_connected_time, format::format_float(qu.tree_depth_mean(), 2),
-                 wqu.union_time, wqu.is_connected_time, format::format_float(wqu.tree_depth_mean(), 2),
-                 wqup.union_time, wqup.is_connected_time, format::format_float(wqup.tree_depth_mean(), 2),
+                 qu.union_time, qu.is_connected_time, ff(qu.tree_depth_mean(), 2),
+                 wqu.union_time, wqu.is_connected_time, ff(wqu.tree_depth_mean(), 2),
+                 wqup.union_time, wqup.is_connected_time, ff(wqup.tree_depth_mean(), 2),
                  connected_count);
     }
 }
@@ -353,7 +354,7 @@ fn compare_performance_fastest() {
     }
     for size in sizes.iter() {
         let size = *size;
-        println!("\nsize = {}", format::format_count(size));
+        println!("\nsize = {}", fc(size));
 
         let mut wqu = WeightedQuickUnion::new(size, true);
 
@@ -414,7 +415,7 @@ fn compare_performance_fixed_size() {
         let elapsed = Instant::now() - start_time;
         let per_union = elapsed / union_chunk_size as u32;
         let unions_per_second = (1.0 / (elapsed.as_secs_f64() / union_chunk_size as f64)) as usize;
-        println!("per union = {:?}; elapsed = {:?}; union/sec = {}", per_union, elapsed, format::format_count(unions_per_second));
+        println!("per union = {:?}; elapsed = {:?}; union/sec = {}", per_union, elapsed, fc(unions_per_second));
     }
 }
 
@@ -424,7 +425,7 @@ fn time_mutex() {
     let union_count = 100_000;
     // let union_count = 100_000_000;
     // let union_count = 10_000_000_000;
-    println!("size = {}; union_count = {}", format::format_count(size), format::format_count(union_count));
+    println!("size = {}; union_count = {}", fc(size), fc(union_count));
 
     let mut union = Vec::with_capacity(size);
     let start_time = Instant::now();
@@ -477,13 +478,13 @@ fn time_partition() {
         let union_count = (size as f32 * union_mult) as usize;
         let unions_per_partition = union_count / partition_count;
         println!("\npartition_count = {}, width = {}, height = {}, size = {}, nodes_per_partition = {}, union_count = {}, unions_per_partition = {}",
-                 format::format_count(partition_count),
-                 format::format_count(width),
-                 format::format_count(height),
-                 format::format_count(size),
-                 format::format_count(nodes_per_partition),
-                 format::format_count(union_count),
-                 format::format_count(unions_per_partition));
+                 fc(partition_count),
+                 fc(width),
+                 fc(height),
+                 fc(size),
+                 fc(nodes_per_partition),
+                 fc(union_count),
+                 fc(unions_per_partition));
         // debug_assert_eq!(0, size % partition_count);
 
         let pairs = random_x_y_pairs_like_percolation(width, height,union_count);
@@ -510,7 +511,7 @@ fn time_partition() {
             let label = if index == partition_count { "x".to_string() } else { index.to_string() };
             let pct = nodes.len() as f32 / union_count as f32;
             if index == partition_count {
-                println!("p {}: {}", label, format::format_float(pct, 5));
+                println!("p {}: {}", label, ff(pct, 5));
             }
         }
 

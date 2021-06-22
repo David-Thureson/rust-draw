@@ -14,6 +14,7 @@ pub struct Renderer {
     back_color: crate::Color1,
     colors: Vec<Color1>,
     frames: Vec<Frame>,
+    // glyph_cache: GlyphCache<'static>,
     start_time: Instant,
     next_frame_time: Instant,
     frame_index: usize,
@@ -52,12 +53,22 @@ impl Renderer {
         let current_frame = Frame::new(vec![], 0.001);
         let next_frame_time = Instant::now();
 
+        /*
+        let glyph_cache = GlyphCache::new(
+            "./assets/fonts/Lato-Regular.ttf",
+            (),
+            TextureSettings::new().min(Filter::Nearest),
+        ).unwrap();
+
+         */
+
         let mut rend = Renderer {
             gl: GlGraphics::new(opengl),
             additive,
             back_color,
             colors,
             frames,
+            // glyph_cache,
             start_time: Instant::now(),
             next_frame_time,
             frame_index: usize::max_value(),
@@ -180,3 +191,31 @@ impl Renderer {
         //self.rotation += 2.0 * args.dt;
     }
 }
+
+
+// use piston_window::*;
+/*
+pub fn try_draw_text_in_window() {
+    // https://medium.com/@arpith/rendering-text-in-rust-with-piston-window-5811b63b1324
+    let text = "abc 123";
+    // let mut window: piston_window::WindowSettings = piston_window::WindowSettings::new(
+    let mut window: piston_window::PistonWindow = piston_window::WindowSettings::new(
+    // let mut window: WindowSettings = WindowSettings::new(
+        text,
+        [200, 200]
+    )
+    .fullscreen(true)
+    .exit_on_esc(true)
+    .build()
+    .unwrap();
+
+    let assets = find_folder::Search::ParentsThenKids(3, 3)
+        .for_folder("assets").unwrap();
+    let ref font = assets.join("FiraSans-Regular.ttf");
+    let factory = window.factory.clone();
+    let texture = TextureSettings::new();
+    // let mut glyphs = Glyphs::new(font, factory, texture).unwrap();
+
+    window.draw
+}
+ */

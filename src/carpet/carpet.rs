@@ -3,7 +3,6 @@ use std::time::{Instant, Duration};
 use crate::*;
 use renderer_3::*;
 use crate::grid::*;
-use util::format;
 use std::sync::mpsc;
 use std::thread;
 use std::collections::BTreeMap;
@@ -128,7 +127,7 @@ impl Carpet {
         // let duration = Instant::now() - start_time;
         // let pct_in_check_wedge = self.time_check_square_in_wedge.div_duration_f64(duration);
         // rintln!("Carpet::go(): overall = {:?}; check wedge count = {}; check wedge time = {:?}; pct check wedge = {}",
-        //         duration, format::format_count(self.count_check_square_in_wedge), self.time_check_square_in_wedge, pct_in_check_wedge);
+        //         duration, fc(self.count_check_square_in_wedge), self.time_check_square_in_wedge, pct_in_check_wedge);
     }
 
     fn square(&mut self, mut coord: GridCoord, mut direction: Direction, length: f32, mut in_wedge: bool) {
@@ -400,8 +399,8 @@ fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32, 
     let start_time = Instant::now();
     let carpet = create_one(size, min_length, mult, algorithm);
     println!("Create carpet: {:?}; count_square = {}, count_side = {}, count_touch_rect = {}",
-             Instant::now() - start_time, format::format_count(carpet.count_square),
-             format::format_count(carpet.count_side), format::format_count(carpet.count_touch_rect));
+             Instant::now() - start_time, fc(carpet.count_square),
+             fc(carpet.count_side), fc(carpet.count_touch_rect));
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let frame_seconds = 0.1;
@@ -429,9 +428,9 @@ fn first() {
     carpet.go();
     println!("create grid seconds = {}, count_square = {}, count_side = {}, count_touch_rect = {}",
         (Instant::now() - start_time).as_secs(),
-        format::format_count(carpet.count_square),
-        format::format_count(carpet.count_side),
-        format::format_count(carpet.count_touch_rect));
+        fc(carpet.count_square),
+        fc(carpet.count_side),
+        fc(carpet.count_touch_rect));
 
     // let char_grid = Grid::new_from(&carpet.grid, count_to_char(&0), count_to_char);
     // let char_grid = Grid::new_from(&carpet.grid, count_to_char_black_white);
@@ -576,7 +575,7 @@ fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_le
         prev_grid = Some(carpet.grid.clone());
     }
     dbg!(Instant::now() - start_time);
-    println!("frame count = {}, skipped_count = {}", format::format_count(frames.len()), format::format_count(skipped_count));
+    println!("frame count = {}, skipped_count = {}", fc(frames.len()), fc(skipped_count));
     let back_color = count_to_color_black_white(&0);
     let additive = false;
     Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
@@ -634,7 +633,7 @@ fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_
         // `recv` will block the current thread if there are no messages available
         let (frame_index, grid) = rx.recv().unwrap();
         grids.insert(frame_index, grid);
-        println!("frame_index = {}; remaining frames = {}", format::format_count(frame_index), format::format_count(mults.len() - (i + 1)));
+        println!("frame_index = {}; remaining frames = {}", fc(frame_index), fc(mults.len() - (i + 1)));
     }
 
     // Wait for the threads to complete any remaining work.
@@ -658,7 +657,7 @@ fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_
         prev_grid = Some(grid.clone());
     }
     dbg!(Instant::now() - start_time);
-    println!("frame count = {}, skipped_count = {}", format::format_count(frames.len()), format::format_count(skipped_count));
+    println!("frame count = {}, skipped_count = {}", fc(frames.len()), fc(skipped_count));
     let back_color = count_to_color_black_white(&0);
     let additive = false;
 
@@ -692,7 +691,7 @@ fn animate_show_existing(size: usize, black_white_modulus: usize, display_width_
             //&|count| count_to_color_gray(count, min, max)));
     }
     dbg!(Instant::now() - start_time);
-    println!("frame count = {}, skipped_count = {}", format::format_count(frames.len()), format::format_count(mults.len() - frames.len()));
+    println!("frame count = {}, skipped_count = {}", fc(frames.len()), fc(mults.len() - frames.len()));
     let back_color = count_to_color_black_white(&0);
     let additive = false;
 

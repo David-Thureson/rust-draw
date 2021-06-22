@@ -203,9 +203,9 @@ fn compare_performance() {
         // qu.print_components();
         println!("uf union = {:?}; qu union = {:?}; qu con = {:?}, qu depth = {}, wqu union = {:?}; wqu con = {:?}, wqu depth = {}, wqup union = {:?}; wqup con = {:?}, wqup depth = {}, connected_count = {}",
                  qf.union_time,
-                 qu.union_time, qu.is_connected_time, format::format_float(qu.tree_depth_mean(), 2),
-                 wqu.union_time, wqu.is_connected_time, format::format_float(wqu.tree_depth_mean(), 2),
-                 wqup.union_time, wqup.is_connected_time, format::format_float(wqup.tree_depth_mean(), 2),
+                 qu.union_time, qu.is_connected_time, ff(qu.tree_depth_mean(), 2),
+                 wqu.union_time, wqu.is_connected_time, ff(wqu.tree_depth_mean(), 2),
+                 wqup.union_time, wqup.is_connected_time, ff(wqup.tree_depth_mean(), 2),
                  connected_count);
     }
 }
@@ -237,10 +237,10 @@ fn compare_performance_fastest() {
             //     connected_count += 1;
             //}
         }
-        // println!("size = {}; inputs_elapsed = {:?}; elapsed = {:?}; connected_count = {}", format::format_count(size), inputs_elapsed, Instant::now() - start_time, format::format_count(connected_count));
+        // println!("size = {}; inputs_elapsed = {:?}; elapsed = {:?}; connected_count = {}", fc(size), inputs_elapsed, Instant::now() - start_time, fc(connected_count));
         let elapsed = Instant::now() - start_time;
         let per_union = elapsed / size as u32;
-        println!("size = {}; per union = {:?}; elapsed = {:?}", format::format_count(size), per_union, elapsed);
+        println!("size = {}; per union = {:?}; elapsed = {:?}", fc(size), per_union, elapsed);
     }
     /*
     size = 10; inputs_elapsed = 7.4µs; elapsed = 9.6µs; connected_count = 4
@@ -280,7 +280,7 @@ fn compare_performance_fixed_size() {
         let elapsed = Instant::now() - start_time;
         let per_union = elapsed / union_chunk_size as u32;
         let unions_per_second = (1.0 / (elapsed.as_secs_f64() / union_chunk_size as f64)) as usize;
-        println!("per union = {:?}; elapsed = {:?}; union/sec = {}", per_union, elapsed, format::format_count(unions_per_second));
+        println!("per union = {:?}; elapsed = {:?}; union/sec = {}", per_union, elapsed, fc(unions_per_second));
     }
 }
 
@@ -290,7 +290,7 @@ fn time_mutex() {
     let union_count = 100_000;
     // let union_count = 100_000_000;
     // let union_count = 10_000_000_000;
-    println!("size = {}; union_count = {}", format::format_count(size), format::format_count(union_count));
+    println!("size = {}; union_count = {}", fc(size), fc(union_count));
 
     let mut union = Vec::with_capacity(size);
     let start_time = Instant::now();

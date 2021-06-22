@@ -8,6 +8,9 @@ fn main() {
     // draw::carpet::carpet::main();
     // draw::grid::main();
     // draw::algorithms::union_find::main();
-    draw::algorithms::generic_union::main();
+    // draw::algorithms::generic_union::main();
     // draw::algorithms::percolation::main();
+    // draw::algorithms::generic_percolation::main();
+    draw::algorithms::percolate_anim::main();
+    // draw::renderer_3::try_draw_text_in_window();
 }

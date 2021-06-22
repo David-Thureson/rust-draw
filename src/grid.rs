@@ -372,6 +372,23 @@ impl Grid<usize> {
         frame
     }
 
+    pub fn as_frame_color_index_captioned(&self, display_width: f64, display_height: f64, caption_height: f64, frame_seconds: f64) -> Frame {
+        let block_width = display_width / self.width as f64;
+        let block_height = display_height / self.height as f64;
+        let mut shapes = vec![];
+        let mut block_x = 0.0;
+        let mut block_y = 0.0;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                shapes.push(Shape::rectangle_fast(block_x, block_y + caption_height, block_width, block_height, self.get_xy(x, y)));
+                block_x += block_width;
+            }
+            block_y += block_height;
+            block_x = 0.0;
+        }
+        let frame = Frame::new(shapes, frame_seconds);
+        frame
+    }
 }
 
 impl <T> PartialEq for Grid<T>

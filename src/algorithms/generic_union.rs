@@ -7,25 +7,23 @@ use core::fmt::Display;
 use itertools::Itertools;
 use crate::algorithms::union_find::{WeightedQuickUnion, random_x_y_pairs};
 use rand::Rng;
-use util::format;
 use std::fmt::Debug;
 use std::time::{Instant, Duration};
 use std::convert::TryFrom;
+
+use crate::*;
 
 pub fn main() {
     // test_correctness();
     test_performance();
 }
 
-pub trait GenericUnsigned<T>
-    where T: Copy + Sized + Unsigned + Zero + One + Step + AddAssign + Ord + Display + Debug + TryFrom<usize>,
-          usize: TryFrom<T>,
-          <usize as std::convert::TryFrom<T>>::Error: Debug,
-          <T as std::convert::TryFrom<usize>>::Error: Debug,
-{ }
-
 pub struct GenericUnion<T>
-    where T: Copy + Sized + Unsigned + Zero + One + Step + AddAssign + Ord + Display + Debug
+    where
+        T: Copy + Sized + Unsigned + Zero + One + Step + AddAssign + Ord + Display + Debug + TryFrom<usize>,
+        usize: TryFrom<T>,
+        <usize as std::convert::TryFrom<T>>::Error: Debug,
+        <T as std::convert::TryFrom<usize>>::Error: Debug,
 {
     pub size: T,
     pub nodes: Vec<T>,
@@ -33,10 +31,11 @@ pub struct GenericUnion<T>
 }
 
 impl <T> GenericUnion<T>
-    where T: Copy + Sized + Unsigned + Zero + One + Step + AddAssign + Ord + Display + Debug + TryFrom<usize>,
+    where
+        T: Copy + Sized + Unsigned + Zero + One + Step + AddAssign + Ord + Display + Debug + TryFrom<usize>,
         usize: TryFrom<T>,
-          <usize as std::convert::TryFrom<T>>::Error: Debug,
-          <T as std::convert::TryFrom<usize>>::Error: Debug,
+        <usize as std::convert::TryFrom<T>>::Error: Debug,
+        <T as std::convert::TryFrom<usize>>::Error: Debug,
 {
     pub fn new(size: T) -> Self {
         let size_usize = usize::try_from(size).unwrap();
@@ -60,7 +59,7 @@ impl <T> GenericUnion<T>
         if root_p != root_q {
             let (root_p_index, root_q_index) = (usize::try_from(root_p).unwrap(), usize::try_from(root_q).unwrap());
             let (p_size, q_size) = (self.sizes[root_p_index], self.sizes[root_q_index]);
-            let (new_root, new_subordinate, new_root_index, new_subordinate_index) = if p_size > q_size {
+            let (new_root, new_subordinate, new_root_index, new_subordinate_index) = if p_size >= q_size {
                 (root_p, root_q, root_p_index, root_q_index)
             } else {
                 (root_q, root_p, root_q_index, root_p_index)
@@ -148,7 +147,7 @@ impl <T> GenericUnion<T>
         map.values().map(|v| v.clone()).collect()
     }
 
-    pub fn get_roots_of_largest_components(&self, limit: T) -> Vec<T> {
+    pub fn get_roots_of_largest_components(&self, limit: usize) -> Vec<T> {
         let one = T::one();
         let mut components = vec![];
         for index in T::zero()..self.size {
@@ -158,8 +157,7 @@ impl <T> GenericUnion<T>
             }
         }
         components.sort_by_cached_key(|(_index, size)| Reverse(*size));
-        let limit_usize = usize::try_from(limit).unwrap();
-        components.iter().take(limit_usize).map(|(index, _size)| *index).collect()
+        components.iter().take(limit).map(|(index, _size)| *index).collect()
     }
 
     pub fn print_components(&self) {
@@ -195,7 +193,7 @@ fn test_correctness() {
         }
         debug_assert_eq!(union_is_connected, gen_union_is_connected);
     }
-    println!("\nconnected_count = {}", format::format_count(connected_count));
+    println!("\nconnected_count = {}", fc(connected_count));
     union.print_components();
     // Try every possible combination.
     let mut connected_count = 0;
@@ -203,14 +201,14 @@ fn test_correctness() {
         for q in 0..size {
             let union_is_connected = union.is_connected(p.into(), q.into());
             let gen_union_is_connected = gen_union.is_connected(p, q);
-            //rintln!("p = {}, q = {}, union_is_connected = {:?}, gen_union_is_connected = {:?}", format::format_count(p), format::format_count(q), union_is_connected, gen_union_is_connected);
+            //rintln!("p = {}, q = {}, union_is_connected = {:?}, gen_union_is_connected = {:?}", fc(p), fc(q), union_is_connected, gen_union_is_connected);
             if union_is_connected {
                 connected_count += 1;
             }
             debug_assert_eq!(union_is_connected, gen_union_is_connected);
         }
     }
-    println!("connected_count = {}", format::format_count(connected_count));
+    println!("connected_count = {}", fc(connected_count));
 }
 
 #[allow(dead_code)]
@@ -224,7 +222,7 @@ fn test_performance() {
     while size < size_max {
         let mut connected_count = 0;
         let union_count = size * union_mult;
-        println!("\nsize = {}; union_count = {}", format::format_count(size), format::format_count(union_count));
+        println!("\nsize = {}; union_count = {}", fc(size), fc(union_count));
 
         let start_time = Instant::now();
         let union_pairs = random_x_y_pairs(size, union_count);
@@ -308,18 +306,24 @@ fn test_performance() {
         // union32 = if size < u32::max_value() as usize { Some(GenericUnion::new(u32::from(size))) } else { None };
         // union64 = if size < u64::max_value() as usize { Some(GenericUnion::new(u64::from(size))) } else { None };
 
-        println!("connected_count = {}", format::format_count(connected_count));
+        println!("connected_count = {}", fc(connected_count));
 
         size *= size_mult;
     }
 }
 
 fn print_elapsed_one_run(label: &str, size: usize, new_elapsed: Duration, union_elapsed: Duration, connected_elapsed: Duration) {
+    let size = u32::try_from(size).unwrap_or(0);
+    let (new_each, union_each, connected_each) = if size > 0 {
+        (new_elapsed / size, union_elapsed / size, connected_elapsed / size)
+    } else {
+        (Duration::zero(), Duration::zero(), Duration::zero())
+    };
     println!("{}: new {:?} / {:?}; union {:?} / {:?}; connected {:?} / {:?}",
              label,
-             new_elapsed / size as u32, new_elapsed,
-             union_elapsed / size as u32, union_elapsed,
-             connected_elapsed / size as u32, connected_elapsed);
+             new_each, new_elapsed,
+             union_each, union_elapsed,
+             connected_each, connected_elapsed);
 }
 
 #[allow(dead_code)]
@@ -373,5 +377,45 @@ union: new 3ns / 1.1477993s; union 303ns / 81.5456893s; connected 158ns / 42.791
 u32: new 3ns / 938.1944ms; union 301ns / 81.2325096s; connected 156ns / 42.1190719s
 u64: new 3ns / 1.227913s; union 316ns / 85.0294521s; connected 152ns / 41.2320363s
 connected_count = 511,325,181
- */
+
+===================================================================================================
+===================================================================================================
+===================================================================================================
+
+size = 134,217,728; union_count = 134,217,728
+pairs: 8.8566119s
+union: new 4ns / 576.9139ms; union 307ns / 41.3675757s; connected 160ns / 21.5665089s
+u32: new 3ns / 408.0389ms; union 257ns / 34.5676657s; connected 119ns / 16.0857107s
+u64: new 4ns / 589.8467ms; union 295ns / 39.7230787s; connected 146ns / 19.7740658s
+connected_count = 85,217,123
+
+size = 268,435,456; union_count = 268,435,456
+pairs: 17.7302061s
+union: new 3ns / 1.155209s; union 295ns / 79.3024168s; connected 157ns / 42.4116782s
+u32: new 3ns / 930.6007ms; union 313ns / 84.5242457s; connected 159ns / 42.8650593s
+u64: new 3ns / 1.2394369s; union 301ns / 80.9881913s; connected 157ns / 42.3237128s
+connected_count = 170,433,505
+
+size = 536,870,912; union_count = 536,870,912
+pairs: 35.4191967s
+union: new 3ns / 2.3163602s; union 296ns / 159.3907386s; connected 162ns / 87.4785216s
+u32: new 3ns / 2.1346331s; union 321ns / 172.7656159s; connected 156ns / 84.5083372s
+u64: new 3ns / 2.4098708s; union 315ns / 169.8082637s; connected 158ns / 85.0894605s
+connected_count = 340,879,386
+
+size = 1,073,741,824; union_count = 1,073,741,824
+pairs: 70.8610657s
+union: new 3ns / 4.583285s; union 310ns / 333.3275341s; connected 162ns / 175.2993051s
+u32: new 2ns / 3.8535551s; union 323ns / 347.5648083s; connected 168ns / 181.8145825s
+u64: new 3ns / 4.5773793s; union 321ns / 345.435231s; connected 168ns / 181.836759s
+connected_count = 681,719,510
+
+size = 2,147,483,648; union_count = 2,147,483,648
+pairs: 142.9537805s
+union: new 4ns / 9.8458007s; union 322ns / 693.5622424s; connected 172ns / 371.6632287s
+u32: new 24ns / 53.1832289s; union 389ns / 837.9758407s; connected 178ns / 384.6169481s
+u64: new 5ns / 11.916272s; union 339ns / 728.3968178s; connected 174ns / 374.6282047s
+connected_count = 1,363,436,750
+
+*/
 

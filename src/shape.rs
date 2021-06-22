@@ -21,8 +21,12 @@ pub enum Shape {
         width: f64,
         height: f64,
         color_index: usize,
-    }
+    },
+    //Text {
+
+    // },
 }
+
 
 impl Shape {
 
