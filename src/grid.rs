@@ -9,6 +9,12 @@ use std::fs;
 pub type GridCoord = Point<usize>;
 
 #[derive(Clone)]
+pub enum GridLayout {
+    Square,
+    Hex,
+}
+
+#[derive(Clone)]
 pub struct Grid<T>
     where T: Clone + Sized
 {
@@ -355,14 +361,23 @@ impl Grid<usize> {
     }
 
     pub fn as_frame_color_index(&self, display_width: f64, display_height: f64, frame_seconds: f64) -> Frame {
+        self.as_frame_color_index_layout(display_width, display_height, GridLayout::Square, frame_seconds)
+    }
+
+    pub fn as_frame_color_index_layout(&self, display_width: f64, display_height: f64, layout: GridLayout, frame_seconds: f64) -> Frame {
         let block_width = display_width / self.width as f64;
         let block_height = display_height / self.height as f64;
+        let block_half_width = block_width / 2.0;
         let mut shapes = vec![];
         let mut block_x = 0.0;
         let mut block_y = 0.0;
         for y in 0..self.height {
+            let x_offset = match layout {
+                GridLayout::Square => 0.0,
+                GridLayout::Hex => if y % 2 == 0 { 0.0 } else { block_half_width }
+            };
             for x in 0..self.width {
-                shapes.push(Shape::rectangle_fast(block_x, block_y, block_width, block_height, self.get_xy(x, y)));
+                shapes.push(Shape::rectangle_fast(block_x + x_offset, block_y, block_width, block_height, self.get_xy(x, y)));
                 block_x += block_width;
             }
             block_y += block_height;

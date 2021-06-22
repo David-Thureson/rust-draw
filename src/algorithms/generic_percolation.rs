@@ -14,6 +14,7 @@ use itertools::Itertools;
 use crate::*;
 use std::sync::mpsc;
 use std::thread;
+use crate::grid::GridLayout;
 
 const PERCOLATION_THRESHOLD_EXPECTED: f64 = 0.592746;
 
@@ -35,6 +36,7 @@ pub struct GenericPercolation<T>
 {
     pub width: T,
     pub height: T,
+    pub layout: GridLayout,
     pub width_usize: usize,
     pub height_usize: usize,
     pub start_node_index: T,
@@ -52,6 +54,10 @@ impl <T> GenericPercolation<T>
         <T as std::convert::TryFrom<usize>>::Error: Debug,
 {
     pub fn new(width: T, height: T) -> Self {
+        Self::new_layout(width, height, GridLayout::Square)
+    }
+
+    pub fn new_layout(width: T, height: T, layout: GridLayout) -> Self {
         let cell_count = width * height;
         let mut cells= Vec::with_capacity(Self::to_usize(cell_count));
         let zero = T::zero();
@@ -66,6 +72,7 @@ impl <T> GenericPercolation<T>
         let mut perc = Self {
             width,
             height,
+            layout,
             width_usize: usize::try_from(width).unwrap(),
             height_usize: usize::try_from(height).unwrap(),
             start_node_index,
@@ -92,7 +99,7 @@ impl <T> GenericPercolation<T>
     }
 
     pub fn clone_new(other: &Self) -> Self {
-        Self::new(other.width, other.height)
+        Self::new_layout(other.width, other.height, other.layout.clone())
     }
 
     #[allow(dead_code)]
@@ -126,23 +133,54 @@ impl <T> GenericPercolation<T>
         self.cells[index_usize] = true;
         let index = self.x_y_to_index(x, y);
         let (zero, one) = (T::zero(), T::one());
-        // Up.
-        if y > zero && self.is_open_x_y(x, y - one) {
-            self.union.union(index, index - self.width);
-        }
-        // Right.
-        if x < self.width - one && self.is_open_x_y(x + one, y)  {
-            self.union.union(index, index + one);
-        }
-        // Down.
-        if y < self.height - one && self.is_open_x_y(x, y + one) {
-            self.union.union(index, index + self.width);
-        }
-        // Left.
-        if x > zero && self.is_open_x_y(x - one, y) {
-            self.union.union(index, index - one);
+        let two = one + one;
+        match self.layout {
+            GridLayout::Square => {
+                // Up.
+                if y > zero && self.is_open_x_y(x, y - one) {
+                    self.union.union(index, index - self.width);
+                }
+                // Right.
+                if x < self.width - one && self.is_open_x_y(x + one, y) {
+                    self.union.union(index, index + one);
+                }
+                // Down.
+                if y < self.height - one && self.is_open_x_y(x, y + one) {
+                    self.union.union(index, index + self.width);
+                }
+                // Left.
+                if x > zero && self.is_open_x_y(x - one, y) {
+                    self.union.union(index, index - one);
+                }
+            },
+            GridLayout::Hex => {
+                // Up and down (same x though it will be at an angle).
+                if y > zero { self.check_neighbor(index, x, y - one); }
+                self.check_neighbor(index, x, y + one);
+                // Left and right.
+                if x > zero { self.check_neighbor(index, x - one, y); }
+                self.check_neighbor(index, x + one, y);
+                if y % two == zero {
+                    // Even rows are shifted slightly to the left of odd rows, so they can connect
+                    // diagonally with x - 1 cells in neighboring odd rows.
+                    if x > zero && y > zero { self.check_neighbor(index, x - one, y - one); }
+                    if x > zero { self.check_neighbor(index, x - one, y + one); }
+                } else {
+                    // Odd rows are shifted slightly to the right, so they can connect diagonally
+                    // with x + 1 cells in neighboring even rows.
+                    if y > zero { self.check_neighbor(index, x + one, y - one); }
+                    self.check_neighbor(index, x + one, y + one);
+                }
+            }
         }
         true
+    }
+
+    #[inline]
+    fn check_neighbor(&mut self, open_index: T, neighbor_x: T, neighbor_y: T) {
+        if neighbor_x < self.width && neighbor_y < self.height && self.is_open_x_y(neighbor_x, neighbor_y) {
+            self.union.union(open_index, self.x_y_to_index(neighbor_x, neighbor_y));
+        }
     }
 
     #[inline]
