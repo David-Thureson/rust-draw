@@ -59,7 +59,7 @@ impl <T> GenericPercolation<T>
 
     pub fn new_layout(width: T, height: T, layout: GridLayout) -> Self {
         let cell_count = width * height;
-        let mut cells= Vec::with_capacity(Self::to_usize(cell_count));
+        let mut cells= Vec::with_capacity(Self::to_usize_assoc(cell_count));
         let zero = T::zero();
         for _ in zero..cell_count {
             cells.push(false);
@@ -121,7 +121,7 @@ impl <T> GenericPercolation<T>
     }
 
     pub fn open_usize(&mut self, x: usize, y: usize) -> bool {
-        self.open(Self::from_usize(x), Self::from_usize(y))
+        self.open(self.from_usize(x), self.from_usize(y))
     }
 
     pub fn open(&mut self, x: T, y: T) -> bool {
@@ -199,19 +199,24 @@ impl <T> GenericPercolation<T>
     }
 
     #[inline]
-    pub fn to_usize(val: T) -> usize {
+    pub fn to_usize_assoc(val: T) -> usize {
         usize::try_from(val).unwrap()
     }
 
     #[inline]
-    pub fn from_usize(val: usize) -> T {
+    pub fn to_usize(&self, val: T) -> usize {
+        usize::try_from(val).unwrap()
+    }
+
+    #[inline]
+    pub fn from_usize(&self, val: usize) -> T {
         T::try_from(val).unwrap()
     }
 
     pub fn get_steps_to_percolation(&mut self, pairs: &[(usize, usize)]) -> Result<usize, String> {
         let mut step_count = 0;
         for (x, y) in pairs.iter() {
-            if self.open(Self::from_usize(*x), Self::from_usize(*y)) {
+            if self.open(self.from_usize(*x), self.from_usize(*y)) {
                 step_count += 1;
                 if self.percolates() {
                     return Ok(step_count)
@@ -314,7 +319,7 @@ impl <T> GenericPercolation<T>
     }
 
     pub fn get_state(&self) -> (Vec<bool>, Vec<usize>) {
-        (self.cells.clone(), self.union.nodes.iter().map(|x| Self::to_usize(*x)).collect())
+        (self.cells.clone(), self.union.nodes.iter().map(|x| self.to_usize(*x)).collect())
     }
 }
 

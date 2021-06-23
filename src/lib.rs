@@ -9,7 +9,7 @@ extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
 
-pub use util::format::{fc, ff};
+pub use util::format::{fc, ff, list_of_counts, list_of_counts_indexed};
 
 pub mod algorithms;
 pub mod animation_test;

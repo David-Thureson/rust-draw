@@ -1,5 +1,6 @@
 pub mod generic_percolation;
 pub mod generic_union;
+pub mod group_color;
 pub mod percolate_anim;
 pub mod percolation;
 pub mod union_find;
