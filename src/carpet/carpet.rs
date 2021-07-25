@@ -539,16 +539,16 @@ fn try_animation() {
     // animate_mult(200, 2.0, 2.0, 4, 0.67, 0.69, 0.0001)
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.65, 0.70, 0.0003)
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.60, 0.65, 0.001)
-    // animate_mult_parallel(800, 1.0, 1.0, 3, 0.63, 0.68, 0.001)
+    // animate_mult_parallel(800, 2, 1.0, 1.0, 3, 0.63, 0.68, 0.001, 50);
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.5, 0.60, 0.001)
-    // animate_mult_parallel(400, 2.0, 1.0, 3, 0.7, 0.9, 0.001, 25);
+    animate_mult_parallel(400, 2, 2.0, 2.0, 3, 0.65, 0.8, 0.001, 50);
     // animate_show_existing(400, 2.0, 2.0, 3, 0.7, 0.9, 0.001);
     // animate_mult_parallel(200, 5, 4.0, 1.0, 7, 0.6, 0.8, 0.002, 1_000);
     // animate_mult_parallel(200, 5, 2.0, 1.0, 7, 0.8, 0.9, 0.002, 1_000);
     // animate_show_existing(200, 5, 4.0, 1.5, 7, 0.8, 0.9, 0.002);
     // animate_mult_parallel(200, 4, 2.0, 0.75, 7, 0.53, 0.8, 0.002, 1_000);
     // animate_mult_parallel(100, 4, 4.0, 1.0, 7, 0.53, 0.9, 0.002, 1_000);
-    animate_show_existing(100, 4, 4.0, 1.0, 7, 0.53, 0.9, 0.002);
+    // animate_show_existing(100, 4, 4.0, 1.0, 7, 0.53, 0.9, 0.002);
 }
 
 #[allow(dead_code)]

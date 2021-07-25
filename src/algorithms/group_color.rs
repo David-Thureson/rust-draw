@@ -87,7 +87,7 @@ impl <T> GroupColor<T>
             for (removed_root, removed_color) in removed_map.iter_mut() {
                 for (added_root, added_color) in added_map.iter_mut() {
                     if union.is_connected(*removed_root, *added_root) {
-                        println!("Found connected removed = ({}, {}), added_root = {}", fc(*removed_root), removed_color.unwrap(), fc(*added_root));
+                        //rintln!("Found connected removed = ({}, {}), added_root = {}", fc(*removed_root), removed_color.unwrap(), fc(*added_root));
                         *added_color = *removed_color;
                         *removed_color = None;
                         continue;

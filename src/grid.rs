@@ -58,7 +58,7 @@ impl <T> Grid<T>
             default_value,
             cell_values: vec![],
             events: vec![],
-            record_events: true,
+            record_events: false,
         };
         grid.create_cells();
         grid
@@ -138,6 +138,49 @@ impl <T> Grid<T>
 
     pub fn coord_is_in_grid(&self, coord: GridCoord) -> bool {
         coord.x < self.width && coord.y < self.height
+    }
+
+    pub fn neighbor_values(&self, x: usize, y: usize) -> Vec<T> {
+        let (x, y) = (x as isize, y as isize);
+        let mut v = vec![];
+        for y_check in y - 1..=y + 1 {
+            for x_check in x - 1..=x + 1 {
+                if !(y_check == y && x_check == x) && y_check >= 0 && y_check < self.height as isize && x_check >= 0 && x_check < self.width as isize {
+                    v.push(self.get_xy(x_check as usize, y_check as usize));
+                }
+            }
+        }
+        v
+    }
+
+    pub fn neighbor_values_moore_toroidal(&self, x: usize, y: usize) -> Vec<T> {
+        // let log = x < 3 && y < 3;
+        let (x, y) = (x as isize, y as isize);
+        // if log { println("neighbor_values_moore_toroidal\nx = {}, y = {}", x, y); }
+        let (width_i, height_i) = (self.width as isize, self.height as isize);
+        let mut v = vec![];
+        for mut y_candidate in y - 1..=y + 1 {
+            for mut x_candidate in x - 1..=x + 1 {
+                if !(y_candidate == y && x_candidate == x) {
+                    let y_check = if y_candidate < 0 {
+                        y_candidate + height_i
+                    } else if y_candidate >= height_i {
+                        y_candidate - height_i
+                    } else {
+                        y_candidate
+                    };
+                    let x_check = if x_candidate < 0 {
+                        x_candidate + width_i
+                    } else if x_candidate >= width_i {
+                        x_candidate - width_i
+                    } else {
+                        x_candidate
+                    };
+                    v.push(self.get_xy(x_check as usize, y_check as usize));
+                }
+            }
+        }
+        v
     }
 
     // pub fn events_to_frames(&self, _frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: fn(&T) -> Color1) -> Vec<Frame> {

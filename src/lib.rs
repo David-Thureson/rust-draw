@@ -17,6 +17,7 @@ pub mod animator;
 pub mod barnsley_fern_animated;
 pub mod barnsley_fern_raster;
 pub mod carpet;
+pub mod cave_cell;
 pub mod color;
 pub mod geometry;
 pub mod grid;

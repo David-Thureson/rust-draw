@@ -449,10 +449,12 @@ fn animate_group_color() {
     let start_time = Instant::now();
     let run_to_completion_max_seconds = 30;
     // let extra_colors_max = 200;
-    let extra_colors_max = 200;
+    // let extra_colors_max = 400;
+    let extra_colors_max = 0;
     let (color_min, color_max) = (0.2, 0.8);
     let frame_seconds_min = 0.25;
-    let (width, height, start_render_threshold, animation_seconds, deceleration_ratio) = (800, 800, 0.95, 30.0, 1.0);
+    // let (width, height, start_render_threshold, animation_seconds, deceleration_ratio) = (800, 800, 0.95, 30.0, 1.0);
+    let (width, height, start_render_threshold, animation_seconds, deceleration_ratio) = (1_600, 800, 0.0, 30.0, 50.0);
     let color_threshold = 0.95;
     let open_as_white = false;
     let (width_typed, height_typed) = (from_usize_32(width), from_usize_32(height));
@@ -473,7 +475,9 @@ fn animate_group_color() {
 
     // Precalculate the number of steps.
     let mut perc = GenericPercolation::new(width_typed, height_typed);
-    let unions = perc.run_to_completion(run_to_completion_max_seconds);
+    let mut unions = perc.run_to_completion(run_to_completion_max_seconds);
+    unions.truncate(unions.len() - 1);
+
     let step_count = unions.len();
     let color_threshold_step = (step_count as f64 * color_threshold) as usize;
     let start_render_step = (step_count as f64 * start_render_threshold) as usize;
