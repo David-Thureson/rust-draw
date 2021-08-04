@@ -15,6 +15,27 @@ pub enum GridLayout {
 }
 
 #[derive(Clone)]
+pub enum GridNeighborType {
+    // https://en.wikipedia.org/wiki/Cellular_automaton
+    Moore {
+        // Surrounding cells.
+        range: usize,
+    },
+    VonNeuman {
+        // Cross.
+        range: usize,
+    }
+}
+
+#[derive(Clone)]
+pub enum GridWrappingStyle {
+    None,
+    Horizontal,
+    Vertical,
+    Toroidal,
+}
+
+#[derive(Clone)]
 pub struct Grid<T>
     where T: Clone + Sized
 {
@@ -131,6 +152,11 @@ impl <T> Grid<T>
         self.cell_values[y][x] = value;
     }
 
+    pub fn set_by_index(&mut self, cell_index: usize, value: T) {
+        let (x, y) = cell_index_to_x_y_usize(self.width, cell_index);
+        self.set_xy(x, y, value);
+    }
+
     pub fn set_coord(&mut self, coord: GridCoord, value: T) {
         debug_assert!(!self.record_events);
         self.cell_values[coord.y][coord.x] = value;
@@ -159,8 +185,8 @@ impl <T> Grid<T>
         // if log { println("neighbor_values_moore_toroidal\nx = {}, y = {}", x, y); }
         let (width_i, height_i) = (self.width as isize, self.height as isize);
         let mut v = vec![];
-        for mut y_candidate in y - 1..=y + 1 {
-            for mut x_candidate in x - 1..=x + 1 {
+        for y_candidate in y - 1..=y + 1 {
+            for x_candidate in x - 1..=x + 1 {
                 if !(y_candidate == y && x_candidate == x) {
                     let y_check = if y_candidate < 0 {
                         y_candidate + height_i
@@ -183,6 +209,88 @@ impl <T> Grid<T>
         v
     }
 
+    #[inline]
+    pub fn neighbors(&self, neighbor_type: &GridNeighborType, wrapping_style: &GridWrappingStyle, x: usize, y: usize) -> Vec<(usize, usize)> {
+        // let log = x < 3 && y < 3;
+        // if log { println("neighbors\nx = {}, y = {}", x, y); }
+        let (x, y) = (x as isize, y as isize);
+        let mut v = vec![];
+        match neighbor_type {
+            GridNeighborType::Moore { range } => {
+                // Surrounding cells.
+                let range = *range as isize;
+                for y_candidate in y - range..=y + range {
+                    for x_candidate in x - range..=x + range {
+                        if !(y_candidate == y && x_candidate == x) {
+                            if let Some((x, y)) = self.resolve_neighbor(wrapping_style, x_candidate, y_candidate) {
+                                v.push((x, y));
+                            }
+                        }
+                    }
+                }
+            },
+            GridNeighborType::VonNeuman { range } => {
+                // Cross.
+                let range = *range as isize;
+                // Vertical cells.
+                for y_candidate in y - range..=y + range {
+                    if y_candidate != y {
+                        if let Some((x, y)) = self.resolve_neighbor(wrapping_style, x, y_candidate) {
+                            v.push((x, y));
+                        }
+                    }
+                }
+                // Horizontal cells.
+                for x_candidate in x - range..=x + range {
+                    if x_candidate != x {
+                        if let Some((x, y)) = self.resolve_neighbor(wrapping_style, x_candidate, y) {
+                            v.push((x, y));
+                        }
+                    }
+                }
+            }
+        }
+        v
+    }
+
+    #[inline]
+    fn resolve_neighbor(&self, wrapping_style: &GridWrappingStyle, x: isize, y: isize) -> Option<(usize, usize)> {
+        let (width_i, height_i) = (self.width as isize, self.height as isize);
+        let x = if x < 0 {
+            match wrapping_style {
+                GridWrappingStyle::Horizontal | GridWrappingStyle::Toroidal => Some(x + width_i),
+                _ => None,
+            }
+        } else if x >= width_i {
+            match wrapping_style {
+                GridWrappingStyle::Horizontal | GridWrappingStyle::Toroidal => Some(x - width_i),
+                _ => None,
+            }
+        } else {
+            Some(x)
+        };
+        if x.is_none() {
+            return None;
+        }
+        let y = if y < 0 {
+            match wrapping_style {
+                GridWrappingStyle::Vertical | GridWrappingStyle::Toroidal => Some(y + height_i),
+                _ => None,
+            }
+        } else if y >= height_i {
+            match wrapping_style {
+                GridWrappingStyle::Vertical | GridWrappingStyle::Toroidal => Some(y - height_i),
+                _ => None,
+            }
+        } else {
+            Some(y)
+        };
+        match (x, y) {
+            (Some(x), Some(y)) => Some((x as usize, y as usize)),
+            _ => None,
+        }
+    }
+    
     // pub fn events_to_frames(&self, _frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: fn(&T) -> Color1) -> Vec<Frame> {
     pub fn events_to_frames<F>(&self, _frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: &F) -> Vec<Frame>
         where F: Fn(&T) -> Color1
@@ -375,6 +483,60 @@ impl <T> Grid<T>
         let rectangle = GridRectangle::new(x1, y1, x2, y2);
         debug_assert!(self.contains_rectangle(&rectangle));
         rectangle
+    }
+
+    pub fn rotate_cw(&self) -> Self {
+        let mut new_grid = Grid::new(self.height, self.width, self.default_value.clone());
+        for y in 0..self.height {
+            for x in 0..self.width {
+                new_grid.set_xy(y, x, self.get_xy(x, y));
+            }
+        }
+        new_grid
+    }
+
+    pub fn flip_right_left(&self) -> Self {
+        let mut new_grid = Grid::new(self.width, self.height, self.default_value.clone());
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let x_flip = self.width - (x + 1);
+                new_grid.set_xy(x_flip, y, self.get_xy(x, y));
+            }
+        }
+        new_grid
+    }
+
+    pub fn get_all_flips_and_rotations(&self) -> Vec<Self> {
+        let mut v = self.get_all_rotations();
+        let grid = self.flip_right_left();
+        v.append(&mut grid.get_all_rotations());
+        v
+    }
+
+    pub fn get_all_rotations(&self) -> Vec<Self> {
+        let mut v = vec![];
+        v.push(self.clone());
+        let grid = self.rotate_cw();
+        v.push(grid.clone());
+        let grid = grid.rotate_cw();
+        v.push(grid.clone());
+        let grid = grid.rotate_cw();
+        v.push(grid.clone());
+        v
+    }
+
+    pub fn matching_cells<F>(&self, f: F) -> Vec<(usize, usize)>
+        where F: Fn(T) -> bool
+    {
+        let mut v = vec![];
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if f(self.get_xy(x, y)) {
+                    v.push((x, y));
+                }
+            }
+        }
+        v
     }
 
 }

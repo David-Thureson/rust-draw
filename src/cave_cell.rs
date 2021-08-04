@@ -3,10 +3,9 @@
 // Similar approaches here: http://www.roguebasin.com/index.php?title=Cellular_Automata_Method_for_Generating_Random_Cave-Like_Levels
 // Orthogonal town generation: https://pvigier.github.io/2020/03/15/vagabond-city-generation.html
 
-use rand::{Rng, thread_rng, RngCore};
+use rand::{Rng, thread_rng};
 
 use crate::grid::Grid;
-use crate::algorithms::group_color::GroupColor;
 use crate::Color1;
 use crate::renderer_3::Renderer;
 
@@ -17,6 +16,7 @@ pub fn main() {
     run();
 }
 
+#[allow(dead_code)]
 enum Algorithm {
     Original,
     B3S1234,
@@ -136,7 +136,7 @@ fn run() {
                 }
             }
         }
-        std::mem::replace(&mut grid, new_grid);
+        std::mem::swap(&mut grid, &mut new_grid);
         let frame = grid.as_frame_color_index(display_width, display_height, frame_seconds);
         frames.push(frame);
     }

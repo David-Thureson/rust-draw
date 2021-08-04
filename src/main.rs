@@ -13,5 +13,6 @@ fn main() {
     // draw::algorithms::generic_percolation::main();
     // draw::algorithms::percolate_anim::main();
     // draw::renderer_3::try_draw_text_in_window();
-    draw::cave_cell::main();
+    // draw::cave_cell::main();
+    draw::cell_auto::main();
 }

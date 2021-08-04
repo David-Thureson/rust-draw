@@ -18,6 +18,7 @@ pub mod barnsley_fern_animated;
 pub mod barnsley_fern_raster;
 pub mod carpet;
 pub mod cave_cell;
+pub mod cell_auto;
 pub mod color;
 pub mod geometry;
 pub mod grid;
@@ -28,6 +29,7 @@ pub mod shape;
 pub mod try_fractal;
 pub mod try_transition;
 // pub mod try_renderer;
+pub mod voronoi;
 
 pub use color::*;
 pub use geometry::*;
@@ -76,4 +78,20 @@ pub fn print_elapsed_time<F>(label: &str, operation: F)
     let start_time = Instant::now();
     operation();
     println!("{}: {:?}", label, Instant::now() - start_time);
+}
+
+#[inline]
+pub fn cell_index_to_x_y_usize(width: usize, cell_index: usize) -> (usize, usize) {
+    (cell_index % width, cell_index / width)
+}
+
+#[inline]
+pub fn cell_index_to_x_y_isize(width: isize, cell_index: usize) -> (isize, isize) {
+    let cell_index = cell_index as isize;
+    (cell_index % width, cell_index / width)
+}
+
+#[inline]
+pub fn x_y_to_cell_index_isize(width: isize, x: isize, y: isize) -> usize {
+    ((y * width) + x) as usize
 }
