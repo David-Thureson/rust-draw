@@ -69,6 +69,18 @@ impl Color1 {
         Self::from_rgb(0.0, 0.0, 1.0)
     }
 
+    pub fn light_gray() -> Self {
+        Self::from_rgb(0.25, 0.25, 0.25)
+    }
+
+    pub fn gray() -> Self {
+        Self::from_rgb(0.5, 0.5, 0.5)
+    }
+
+    pub fn dark_gray() -> Self {
+        Self::from_rgb(0.75, 0.75, 0.75)
+    }
+
     pub fn random(a: f32) -> Self {
         let mut rng = thread_rng();
         let r = rng.gen_range(0.0..=1.0);

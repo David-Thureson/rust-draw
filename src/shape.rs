@@ -10,6 +10,26 @@ pub enum Shape {
         radius: f64,
         color: Color1,
     },
+    CircleFast {
+        center_x: f64,
+        center_y: f64,
+        radius: f64,
+        color_index: usize,
+    },
+    Line {
+        top_left: PointF64,
+        bottom_right: PointF64,
+        thickness: f64,
+        color: Color1,
+    },
+    LineFast {
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        thickness: f64,
+        color_index: usize,
+    },
     Rectangle {
         top_left: PointF64,
         bottom_right: PointF64,
@@ -40,6 +60,35 @@ impl Shape {
 
     pub fn circle_xy(center_x: f64, center_y: f64, radius: f64, color: Color1) -> Shape {
         Shape::circle(PointF64::new(center_x, center_y), radius, color)
+    }
+
+    pub fn circle_fast(center_x: f64, center_y: f64, radius: f64, color_index: usize) -> Shape {
+        Shape::CircleFast {
+            center_x,
+            center_y,
+            radius,
+            color_index
+        }
+    }
+
+    pub fn line(top_left: PointF64, bottom_right: PointF64, thickness: f64, color: Color1) -> Shape {
+        Shape::Line {
+            top_left,
+            bottom_right,
+            thickness,
+            color,
+        }
+    }
+
+    pub fn line_fast(x0: f64, y0: f64, x1: f64, y1: f64, thickness: f64, color_index: usize) -> Shape {
+        Shape::LineFast {
+            x0,
+            y0,
+            x1,
+            y1,
+            thickness,
+            color_index,
+        }
     }
 
     pub fn rectangle(top_left: PointF64, bottom_right: PointF64, color: Color1) -> Shape {
@@ -95,6 +144,9 @@ impl Shape {
     pub fn with_color(&self, new_color: Color1) -> Self {
         match self {
             Self::Circle { center, radius, color: _ } => Self::circle(center.clone(), *radius, new_color),
+            Self::CircleFast { .. } => panic!("Not implemented for CircleFast since it doesn't have a Color1."),
+            Self::Line { top_left, bottom_right, thickness, color: _ } => Self::line(top_left.clone(), bottom_right.clone(), *thickness, new_color),
+            Self::LineFast { .. } => panic!("Not implemented for LineFast since it doesn't have a Color1."),
             Self::Rectangle { top_left, bottom_right, color: _ } => Self::rectangle(*top_left, *bottom_right, new_color),
             Self::RectangleFast { .. } => panic!("Not implemented for RectangleFast since it doesn't have a Color1."),
         }

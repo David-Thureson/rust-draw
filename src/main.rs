@@ -14,5 +14,6 @@ fn main() {
     // draw::algorithms::percolate_anim::main();
     // draw::renderer_3::try_draw_text_in_window();
     // draw::cave_cell::main();
-    draw::cell_auto::main();
+    // draw::cell_auto::main();
+    draw::voronoi::fortune_anim::main();
 }

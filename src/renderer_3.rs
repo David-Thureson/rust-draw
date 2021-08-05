@@ -157,13 +157,28 @@ impl Renderer {
                         ellipse((*color).into(), rect, transform, gl);
                         //ellipse([1.0, 1.0, 1.0, 1.0], *rect, transform, gl);
                     },
+                    Shape::CircleFast { center_x, center_y, radius, color_index} => {
+                        let rect = [center_x - radius, center_y - radius, radius * 2.0, radius * 2.0];
+                        let transform = c.transform;
+                        ellipse(colors[*color_index].for_render, rect, transform, gl);
+                    },
+                    Shape::Line { top_left, bottom_right, color, thickness} => {
+                        let coord = [top_left.x, top_left.y, bottom_right.x, bottom_right.y];
+                        let transform = c.transform;
+                        line((*color).into(), *thickness, coord, transform, gl);
+                    },
+                    Shape::LineFast { x0,y0,x1, y1, color_index, thickness} => {
+                        let coord = [*x0, *y0, *x1, *y1];
+                        let transform = c.transform;
+                        line(colors[*color_index].for_render, *thickness, coord, transform, gl);
+                    },
                     Shape::Rectangle { top_left, bottom_right, color} => {
                         // if *color != back_color {
                         let rect = [top_left.x, top_left.y, bottom_right.x - top_left.x, bottom_right.y - top_left.y];
                         let transform = c.transform;
                         rectangle((*color).into(), rect, transform, gl);
                         // }
-                    }
+                    },
                     Shape::RectangleFast { x, y, width, height, color_index} => {
                         // if self.additive || *color_index != 0 {
                         if *color_index != 0 {
@@ -171,7 +186,7 @@ impl Renderer {
                             let transform = c.transform;
                             rectangle(colors[*color_index].for_render, rect, transform, gl);
                         }
-                    }
+                    },
                     // _ => unimplemented!(),
                 }
             }
