@@ -2,6 +2,7 @@
 #![feature(duration_zero)]
 #![feature(div_duration)]
 #![feature(step_trait)]
+#![feature(map_first_last)]
 
 extern crate euclid;
 extern crate glutin_window;
@@ -89,6 +90,11 @@ pub fn cell_index_to_x_y_usize(width: usize, cell_index: usize) -> (usize, usize
 pub fn cell_index_to_x_y_isize(width: isize, cell_index: usize) -> (isize, isize) {
     let cell_index = cell_index as isize;
     (cell_index % width, cell_index / width)
+}
+
+#[inline]
+pub fn x_y_to_cell_index_usize(width: usize, x: usize, y: usize) -> usize {
+    (y * width) + x
 }
 
 #[inline]

@@ -22,17 +22,23 @@ pub fn main() {
 struct FortuneAnim {
     pub width: usize,
     pub height: usize,
-    pub points: Vec<(Finite<f64>, Finite<f64>)>,
+    pub points: Vec<(f64, f64)>,
 }
 
 #[allow(dead_code)]
 struct FortuneEventQueue {
-    events: BTreeMap<Finite<f64>, FortuneEventType>,
+    events: BTreeMap<Finite<f64>, FortuneEvent>,
 }
 
 #[allow(dead_code)]
-enum FortuneEventType {
-    Point,
+enum FortuneEvent {
+    Frame {
+        y: f64,
+    },
+    Point {
+        x: f64,
+        y: f64,
+    },
     Vertex,
 }
 
@@ -51,19 +57,77 @@ impl FortuneAnim {
         let mut rng = rand::thread_rng();
         let (width, height) = (self.width as f64, self.height as f64);
         for _ in 0..point_count {
-            let x= (rng.gen::<f64>() * width).into();
-            let y = (rng.gen::<f64>() * height).into();
+            let x= rng.gen::<f64>() * width;
+            let y = rng.gen::<f64>() * height;
             self.points.push((x, y));
         }
     }
 
-    pub fn animate(&mut self, _anim_seconds: usize, _frame_count: usize) {
+    pub fn animate(&mut self, _anim_seconds: usize, frame_count: usize) {
+        let mut queue = FortuneEventQueue::new();
+
+        // Add all of the point events, when the sweep line passes over a point and thus creates a
+        // new parabola.
+        for (x, y) in self.points.iter() {
+            queue.add_event((*y).into(), FortuneEvent::new_point(*x, *y));
+        }
+
+        // Add all of the frame events.
+        let inc = self.height as f64 / frame_count as f64;
+        let mut y = inc;
+        for _ in 0..frame_count {
+            queue.add_event(y.into(), FortuneEvent::new_frame(y));
+            y += inc;
+        }
+
+        // There are no vertex events yet because the sweep line has not activated any points.
+
+        /*
+        while let Some((_, event)) = queue.events.pop_first() {
+            match event {
+                FortuneEvent::Frame { y } => {
+
+                },
+                FortuneEvent::Point { x, y } => {
+
+                },
+                FortuneEvent::Vertex => {
+
+                },
+            }
+        }
+        */
 
     }
 
-    #[allow(dead_code)]
-    fn x_to_key(&self, _x: f64) {
 
+}
+
+impl FortuneEventQueue {
+    pub fn new() -> Self {
+        Self {
+            events: Default::default(),
+        }
+    }
+
+    pub fn add_event(&mut self, key: Finite<f64>, event: FortuneEvent) {
+        debug_assert!(!self.events.contains_key(&key));
+        self.events.insert(key, event);
+    }
+}
+
+impl FortuneEvent {
+    pub fn new_frame(y: f64) -> Self {
+        Self::Frame {
+            y,
+        }
+    }
+
+    pub fn new_point(x: f64, y: f64) -> Self {
+        Self::Point {
+            x,
+            y,
+        }
     }
 }
 

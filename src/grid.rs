@@ -3,8 +3,8 @@ use rand::{Rng, thread_rng};
 
 use crate::*;
 use crate::renderer_3::Renderer;
-use crate::carpet::carpet::count_to_color_black_white;
 use std::fs;
+use std::cmp::min;
 
 pub type GridCoord = Point<usize>;
 
@@ -118,6 +118,49 @@ impl <T> Grid<T>
                 event.cells.push(event_cell);
             }
             grid.events.push(event);
+        }
+        grid
+    }
+
+    /*
+    pub fn new_bool(&self, value_func: &F, default_value: bool) -> Self::<bool>
+        where F: Fn(&T) -> bool
+    {
+        let mut grid = Grid::new(self.width, self.height, default_value);
+        for y in 0..grid.height {
+            for x in 0..grid.width {
+                grid.set_xy(x, y, value_func(&self.get_xy(x, y)));
+            }
+        }
+        grid
+    }
+    */
+
+    pub fn copy_with_value_function<U, F>(&self, value_func: &F, default_value: U) -> Grid<U>
+        where U: Clone,
+              F: Fn(&T) -> U
+    {
+        let mut grid = Grid::new(self.width, self.height, default_value);
+        for y in 0..grid.height {
+            for x in 0..grid.width {
+                grid.set_xy(x, y, value_func(&self.get_xy(x, y)));
+            }
+        }
+        grid
+    }
+
+    pub fn copy_with_other<O, U, F>(&self, other: &Grid<O>, value_func: &F, default_value: U) -> Grid<U>
+        where O: Clone,
+              U: Clone,
+              F: Fn(&T, &O) -> U
+    {
+        debug_assert_eq!(self.width, other.width);
+        debug_assert_eq!(self.height, other.height);
+        let mut grid = Grid::new(self.width, self.height, default_value);
+        for y in 0..grid.height {
+            for x in 0..grid.width {
+                grid.set_xy(x, y, value_func(&self.get_xy(x, y), &other.get_xy(x, y)));
+            }
         }
         grid
     }
@@ -290,7 +333,7 @@ impl <T> Grid<T>
             _ => None,
         }
     }
-    
+
     // pub fn events_to_frames(&self, _frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: fn(&T) -> Color1) -> Vec<Frame> {
     pub fn events_to_frames<F>(&self, _frame_count: usize, display_width: f64, display_height: f64, frame_seconds: f64, value_func: &F) -> Vec<Frame>
         where F: Fn(&T) -> Color1
@@ -335,6 +378,24 @@ impl <T> Grid<T>
         }
         let frame = Frame::new(shapes, frame_seconds);
         frame
+    }
+
+    pub fn draw<F>(&self, display_width_mult: f64, color_func: &F)
+        where F: Fn(&T) -> Color1
+    {
+        // let start_time = Instant::now();
+        let display_width = self.width as f64 * display_width_mult;
+        let display_height = self.height as f64 * display_width_mult;
+        let frame_seconds = 0.1;
+        // let start_time = Instant::now();
+        // let frames = carpet.grid.events_to_frames(frame_count, display_width, display_height, frame_seconds, count_to_color_black_white);
+        // let func: FnOnce(&usize) -> Color1 = |count| count_to_color_gray(count, min, max);
+        let frames = self.to_final_frame(display_width, display_height, frame_seconds, color_func);
+        // println!("create frames seconds = {}", (Instant::now() - start_time).as_secs());
+
+        let back_color = count_to_color_black_white(&0);
+        let additive = false;
+        Renderer::display_additive("Grid", display_width, display_height, back_color, frames, additive);
     }
 
     pub fn display<F>(&self, title: &str, block_size: usize, back_color: Color1, value_func: &F)
@@ -448,8 +509,8 @@ impl <T> Grid<T>
         }
         // Left and right edges.
         for y in rectangle.y1 + 1..rectangle.y2 {
-            self.set_xy(rectangle.x1, y,value.clone());
-            self.set_xy(rectangle.x2, y,value.clone());
+            self.set_xy(rectangle.x1, y, value.clone());
+            self.set_xy(rectangle.x2, y, value.clone());
         }
     }
 
@@ -476,8 +537,8 @@ impl <T> Grid<T>
 
         let x1 = rng.gen_range(0..self.width);
         let y1 = rng.gen_range(0..self.height);
-        let x_add_max = ((self.width - x1) -1).min(max_width - 1);
-        let y_add_max = ((self.height - y1) -1).min(max_height - 1);
+        let x_add_max = ((self.width - x1) - 1).min(max_width - 1);
+        let y_add_max = ((self.height - y1) - 1).min(max_height - 1);
         let x2 = x1 + rng.gen_range(0..=x_add_max);
         let y2 = y1 + rng.gen_range(0..=y_add_max);
         let rectangle = GridRectangle::new(x1, y1, x2, y2);
@@ -539,6 +600,36 @@ impl <T> Grid<T>
         v
     }
 
+    pub fn arrange(col_count: usize, default_value: T, margin_size: usize, grids: &Vec<Grid<T>>) -> Self {
+        let grid_count = grids.len();
+        let one_grid_width = grids[0].width;
+        let one_grid_height = grids[1].height;
+        let col_count = min(col_count, grid_count);
+        let row_count = ((grid_count + col_count) - 1) / col_count;
+        let grid_width = (one_grid_width * col_count) + (margin_size * (col_count + 3));
+        let grid_height = (one_grid_height * row_count) + (margin_size * (row_count + 3));
+        let mut grid = Self::new(grid_width, grid_height, default_value);
+        let mut row_index = 0;
+        let mut col_index = 0;
+        dbg!(&col_count, &grid_count, &one_grid_width, &one_grid_height, &row_count, &grid.width, &grid.height);
+        for source_grid in grids.iter() {
+            let x_offset = (one_grid_width * col_index) + (margin_size * (col_index + 2));
+            let y_offset = (one_grid_height * row_index) + (margin_size * (row_index + 2));
+            assert_eq!(one_grid_width, source_grid.width);
+            assert_eq!(one_grid_height, source_grid.height);
+            for source_y in 0..one_grid_height {
+                for source_x in 0..one_grid_width {
+                    grid.set_xy(x_offset + source_x, y_offset + source_y, source_grid.get_xy(source_x, source_y));
+                }
+            }
+            col_index += 1;
+            if col_index == col_count {
+                row_index += 1;
+                col_index = 0;
+            }
+        }
+        grid
+    }
 }
 
 impl Grid<char> {
@@ -553,6 +644,11 @@ impl Grid<char> {
 }
 
 impl Grid<usize> {
+
+    pub fn copy_mod(&self, modulus: usize) -> Self {
+        self.copy_with_value_function(&|count| if count % modulus == 0 { 0 } else { 1 }, 0)
+    }
+
     pub fn min_max(&self) -> (usize, usize) {
         let mut min = usize::MAX;
         let mut max = usize::MIN;
@@ -608,6 +704,16 @@ impl Grid<usize> {
         }
         let frame = Frame::new(shapes, frame_seconds);
         frame
+    }
+}
+
+impl Grid<bool> {
+    pub fn copy_negative(&self) -> Self {
+        self.copy_with_value_function(&|value| !value, false)
+    }
+
+    pub fn copy_xor(&self, other: &Self) -> Self {
+        self.copy_with_other(other, &|a, b| a != b, false)
     }
 }
 
@@ -835,5 +941,73 @@ fn fill_grid_non_wedge(grid: &mut Grid<Color1>, value: &Color1) {
             }
         }
     }
+}
+
+pub fn count_to_char(count: &usize) -> char {
+    //bg!(*count, *count as u32);
+    match *count {
+        0 => '\'',
+        // 1..9 => count.to_string().chars()[0],
+        // 10..35 => char::
+        1..=35 => char::from_digit(*count as u32, 36).unwrap(),
+        _ => '#',
+    }
+}
+
+pub fn count_to_char_black_white(count: &usize) -> char {
+    if count % 2 == 0 {
+        '░'
+    } else {
+        '▓'
+    }
+}
+
+pub fn count_to_color_black_white(count: &usize) -> Color1 {
+    if count % 2 == 0 {
+        Color1::black()
+    } else {
+        Color1::white()
+    }
+}
+
+pub fn count_to_color_black_white_mod(count: &usize, modulus: usize) -> Color1 {
+    if count % modulus == 0 {
+        Color1::black()
+    } else {
+        Color1::white()
+    }
+}
+
+pub fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
+    // Normalize the count to be within the range 0..1.
+    let level = (count - min) as f32 / (max - min) as f32;
+    //rintln!("count = {}, min = {}, max = {}, level = {}", count, min, max, level);
+    debug_assert!(level <= 255.0);
+    // Color1::from_rgb(level, level, level)
+    match count % 2 {
+        0 => Color1::from_rgb(level, 0.0, 0.0),
+        //1 => Color1::from_rgb(0.0, level, 0.0),
+        1 => Color1::from_rgb(0.0, 0.0, level),
+        _ => panic!(),
+    }
+}
+pub fn bool_to_color_black_white(value: bool) -> Color1 {
+    if value { Color1::white() } else { Color1::black() }
+}
+
+pub fn count_mod(count: &usize, modulus: usize) -> usize {
+    if count % modulus == 0 {
+        0
+    } else {
+        1
+    }
+}
+
+pub fn count_to_true_for_white(count: &usize) -> bool {
+    !count % 2 == 0
+}
+
+pub fn true_for_white_to_count(b: bool) -> usize {
+    if b { 1 } else { 0 }
 }
 
