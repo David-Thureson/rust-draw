@@ -26,7 +26,10 @@ pub fn main() {
     // make_gallery_mult_mod_xor();
     // make_gallery_mod_large();
     // make_gallery_mod_medium();
-    make_gallery_mod_4_combo();
+    // make_gallery_mod_4_combo_1();
+    // make_gallery_mod_4_combo();
+    // debug_edge_issue();
+    generate_grids_parallel();
 }
 
 #[derive(Clone)]
@@ -171,7 +174,7 @@ impl Carpet {
         let length = self.size as f32;
         self.square(coord, direction, length, false);
         if self.algorithm == CarpetAlgorithm::Wedge {
-            self.grid.complete_from_wedge();
+            //self.grid.complete_from_wedge();
         }
 
         // let duration = Instant::now() - start_time;
@@ -372,8 +375,9 @@ impl Carpet {
                 grid
             },
             None => {
+                let algorithm = CarpetAlgorithm::Simple;
                 //et start_time = Instant::now();
-                let mut carpet = Carpet::new(size, min_length, mult, &CarpetAlgorithm::FlatSquare, false);
+                let mut carpet = Carpet::new(size, min_length, mult, &algorithm, false);
                 carpet.go();
                 //rintln!("Carpet::read_or_make_grid({}): not found, created carpet: {:?}", full_file_name, Instant::now() - start_time);
                 let full_file_name = Self::full_file_name(size, min_length, mult, None);
@@ -937,7 +941,7 @@ fn make_gallery_mod_medium() {
 }
 
 #[allow(dead_code)]
-fn make_gallery_mod_4_combo() {
+fn make_gallery_mod_4_combo_1() {
     let size = 200;
     let margin_size = size / 20;
     let display_mult = 1.0;
@@ -974,3 +978,102 @@ fn make_gallery_mod_4_combo() {
     layout_grid.draw(display_mult, &|value| bool_to_color_black_white(*value));
 }
 
+#[allow(dead_code)]
+fn make_gallery_mod_4_combo() {
+    let label = "add_display_mod_4";
+    let size = 200;
+    let margin_size = size / 20;
+    let display_mult = 1.0;
+    // let min_length = 4;
+    let min_length = 3;
+    let mult_min= 0.67;
+    let mult_max= 0.73;
+    let modulus = 4;
+    let col_count = 9;
+    let grid_count = col_count * 4;
+    // let algorithm = &CarpetAlgorithm::Simple;
+
+    let mult_inc = (mult_max - mult_min) / (col_count - 1) as f32;
+
+    let mut ref_grids = Vec::with_capacity(col_count);
+    let mut grids = Vec::with_capacity(grid_count);
+    let mut mult = mult_min;
+    for _ in 0..col_count {
+        let grid = Carpet::read_or_make_grid(size, min_length, mult);
+        ref_grids.push(grid.clone());
+        // These are the original grids with no modulus effect and thus the full counts.
+        let grid = grid.copy_with_value_function(&|count| count % modulus == 0, false);
+        grids.push(grid);
+        mult += mult_inc;
+    }
+
+    // Make three more rows of derived grids. The first row combines reference grid 0 with 1, 1
+    // with 2, and so on. The next row combines 0 with 2, 1 with 3, and so on.
+    for offset in 1..=3 {
+        for i in 0..col_count {
+            let mut second_grid_index = i + offset;
+            if second_grid_index >= col_count {
+                second_grid_index -= col_count;
+            }
+            let grid = ref_grids[i]
+                .copy_add(&ref_grids[second_grid_index])
+                .copy_with_value_function(&|count| count % modulus == 0, false);
+            grids.push(grid);
+        }
+    }
+
+    let layout_grid = Grid::arrange(col_count, false, margin_size, &grids);
+
+    let file_name = format!("{}/carpet_{}_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, (mult_min * 1_000.0) as usize, (mult_max * 1_000.0) as usize, label);
+    image_util::save_grid(&layout_grid, &file_name, &|value| bool_to_color_256_black_white(*value), 0, None);
+
+    layout_grid.draw(display_mult, &|value| bool_to_color_black_white(*value));
+}
+
+#[allow(dead_code)]
+fn debug_edge_issue() {
+    // let label = "debug_edge_issues";
+    let size = 40;
+    let margin_size = 5;
+    let display_mult = 10.0;
+    let min_length = 4;
+    let mult= 0.67;
+    let modulus = 2;
+    let col_count = 3;
+    let grid_count = col_count + 1;
+
+    let mut carpets = Vec::with_capacity(grid_count);
+    carpets.push(create_one(size, min_length, mult, &CarpetAlgorithm::Simple));
+    carpets.push(create_one(size, min_length, mult, &CarpetAlgorithm::Wedge));
+    carpets.push(create_one(size, min_length, mult, &CarpetAlgorithm::FlatSquare));
+
+    let mut grids = carpets.iter()
+        .map(|carpet| carpet.grid.copy_with_value_function(&|count| count % modulus == 0, false))
+        .collect::<Vec<_>>();
+    let xor_grid = grids[0].copy_xor(&grids[1]);
+    grids.push(xor_grid);
+    let layout_grid = Grid::arrange(col_count, false, margin_size, &grids);
+
+    // let file_name = format!("{}/carpet_{}_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, (mult_min * 1_000.0) as usize, (mult_max * 1_000.0) as usize, label);
+    // image_util::save_grid(&layout_grid, &file_name, &|value| bool_to_color_256_black_white(*value), 0, None);
+
+    layout_grid.draw(display_mult, &|value| bool_to_color_black_white(*value));
+}
+
+fn generate_grids_parallel() {
+    let size = 200;
+    let min_length = 5;
+    let mult_min = 0.700;
+    let mult_inc = 0.001;
+    let grid_count = 200;
+
+    let mut mult = mult_min;
+    let mut handles = vec![];
+    for _ in 0..grid_count {
+        handles.push(thread::spawn(move || { Carpet::read_or_make_grid(size, min_length, mult) }));
+        mult += mult_inc;
+    }
+    for handle in handles {
+        let _ = handle.join();
+    }
+}

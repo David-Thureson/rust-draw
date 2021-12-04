@@ -22,6 +22,7 @@ fn main() {
     // draw::voronoi::fortune_anim::main();
     // draw::voronoi::parabola::main();
     // file::write_file("D:\\Test.txt", "abc");
+    // draw::image_util::main();
 
     // let mut file = File::create("D:\\Test.txt").unwrap();
     // let content = "def";

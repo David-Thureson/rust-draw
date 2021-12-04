@@ -649,6 +649,10 @@ impl Grid<usize> {
         self.copy_with_value_function(&|count| if count % modulus == 0 { 0 } else { 1 }, 0)
     }
 
+    pub fn copy_add(&self, other: &Self) -> Self {
+        self.copy_with_other(other, &|a, b| a + b, 0)
+    }
+
     pub fn min_max(&self) -> (usize, usize) {
         let mut min = usize::MAX;
         let mut max = usize::MIN;
@@ -993,6 +997,10 @@ pub fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
 }
 pub fn bool_to_color_black_white(value: bool) -> Color1 {
     if value { Color1::white() } else { Color1::black() }
+}
+
+pub fn bool_to_color_256_black_white(value: bool) -> Color256 {
+    if value { Color256::white() } else { Color256::black() }
 }
 
 pub fn count_mod(count: &usize, modulus: usize) -> usize {

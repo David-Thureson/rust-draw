@@ -23,6 +23,7 @@ pub mod cell_auto;
 pub mod color;
 pub mod geometry;
 pub mod grid;
+pub mod image_util;
 // pub mod renderer_1;
 // pub mod renderer_2;
 pub mod renderer_3;
@@ -33,6 +34,7 @@ pub mod try_transition;
 pub mod voronoi;
 
 pub use color::*;
+// pub use grid::*;
 pub use geometry::*;
 pub use shape::*;
 use std::time::Instant;
