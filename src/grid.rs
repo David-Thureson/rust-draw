@@ -611,7 +611,7 @@ impl <T> Grid<T>
         let mut grid = Self::new(grid_width, grid_height, default_value);
         let mut row_index = 0;
         let mut col_index = 0;
-        dbg!(&col_count, &grid_count, &one_grid_width, &one_grid_height, &row_count, &grid.width, &grid.height);
+        //bg!(&col_count, &grid_count, &one_grid_width, &one_grid_height, &row_count, &grid.width, &grid.height);
         for source_grid in grids.iter() {
             let x_offset = (one_grid_width * col_index) + (margin_size * (col_index + 2));
             let y_offset = (one_grid_height * row_index) + (margin_size * (row_index + 2));
@@ -709,40 +709,12 @@ impl Grid<usize> {
         let frame = Frame::new(shapes, frame_seconds);
         frame
     }
-}
-
-impl Grid<bool> {
-    pub fn copy_negative(&self) -> Self {
-        self.copy_with_value_function(&|value| !value, false)
-    }
-
-    pub fn copy_xor(&self, other: &Self) -> Self {
-        self.copy_with_other(other, &|a, b| a != b, false)
-    }
-}
-
-impl <T> PartialEq for Grid<T>
-    where T: Clone + PartialEq
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.width == other.width
-        && self.height == other.height
-        && self.cell_values == other.cell_values
-    }
-}
-
-impl <T> Eq for Grid<T>
-    where T: Clone + PartialEq
-{
-}
-
-impl Grid<usize> {
     pub fn write(&self, full_file_name: &str) {
         // let start_time = Instant::now();
         let content = format!("{}\n{}\n{}", self.width, self.height,
-            self.cell_values.iter()
-                .map(|row| row.iter().join("\t"))
-                .join("\n"));
+                              self.cell_values.iter()
+                                  .map(|row| row.iter().join("\t"))
+                                  .join("\n"));
         fs::write(full_file_name, content).unwrap();
         //rintln!("Grid::write({}): {:?}", full_file_name, Instant::now() - start_time);
     }
@@ -771,6 +743,59 @@ impl Grid<usize> {
             },
         }
     }
+
+    pub fn copy_normalize(&self, range_max: usize) -> Self {
+        let max_value = self.max_value();
+        let div = max_value as f32 / range_max as f32;
+
+        /*
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let value = self.get_xy(x, y);
+                let norm_value = ((value as f32 / div).floor() as usize;
+                dbg!(max_value, div, value, norm_value);
+                debug_assert!(norm_value < 256);
+            }
+        }
+        */
+
+        self.copy_with_value_function(&|value| (*value as f32 / div).floor() as usize, 0)
+    }
+
+    pub fn max_value(&self) -> usize {
+        let mut max = 0;
+        for y in 0..self.height {
+            for x in 0..self.width {
+                max = max.max(self.get_xy(x, y));
+            }
+        }
+        max
+    }
+}
+
+impl Grid<bool> {
+    pub fn copy_negative(&self) -> Self {
+        self.copy_with_value_function(&|value| !value, false)
+    }
+
+    pub fn copy_xor(&self, other: &Self) -> Self {
+        self.copy_with_other(other, &|a, b| a != b, false)
+    }
+}
+
+impl <T> PartialEq for Grid<T>
+    where T: Clone + PartialEq
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width
+        && self.height == other.height
+        && self.cell_values == other.cell_values
+    }
+}
+
+impl <T> Eq for Grid<T>
+    where T: Clone + PartialEq
+{
 }
 
 impl<T> GridEvent<T>
@@ -995,12 +1020,26 @@ pub fn count_to_color_gray(count: &usize, min: usize, max: usize) -> Color1 {
         _ => panic!(),
     }
 }
+
 pub fn bool_to_color_black_white(value: bool) -> Color1 {
     if value { Color1::white() } else { Color1::black() }
 }
 
 pub fn bool_to_color_256_black_white(value: bool) -> Color256 {
     if value { Color256::white() } else { Color256::black() }
+}
+
+pub fn grayscale_256_to_color_256(value: usize) -> Color256 {
+    debug_assert!(value < 256);
+    let value = value as u8;
+    Color256::from_rgb(value, value, value)
+}
+
+pub fn grayscale_256_to_color_1(value: usize) -> Color1 {
+    //bg!(value);
+    debug_assert!(value < 256);
+    let value = value as f32 / 256.0;
+    Color1::from_rgb(value, value, value)
 }
 
 pub fn count_mod(count: &usize, modulus: usize) -> usize {
@@ -1018,4 +1057,3 @@ pub fn count_to_true_for_white(count: &usize) -> bool {
 pub fn true_for_white_to_count(b: bool) -> usize {
     if b { 1 } else { 0 }
 }
-

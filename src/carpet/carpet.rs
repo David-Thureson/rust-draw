@@ -8,6 +8,7 @@ use std::thread;
 use std::collections::BTreeMap;
 use std::path::Path;
 use bit_vec::BitVec;
+use rand::{thread_rng, Rng};
 
 const PATH_IMAGE_FILES: &str = r"C:\Graphics\Carpet";
 
@@ -29,7 +30,10 @@ pub fn main() {
     // make_gallery_mod_4_combo_1();
     // make_gallery_mod_4_combo();
     // debug_edge_issue();
-    generate_grids_parallel();
+    // try_grayscale_256();
+    // generate_grids_parallel();
+    // draw_big_gallery();
+    draw_combo_gallery();
 }
 
 #[derive(Clone)]
@@ -50,7 +54,7 @@ enum Direction {
 pub struct Carpet {
     size: usize,
     min_length: usize,
-    mult: f32,
+    mult: usize,
     algorithm: CarpetAlgorithm,
     record_events: bool,
     grid: Grid<usize>,
@@ -93,7 +97,7 @@ impl Direction {
 }
 
 impl Carpet {
-    pub fn new(size: usize, min_length: usize, mult: f32, algorithm: &CarpetAlgorithm, record_events: bool) -> Self {
+    pub fn new(size: usize, min_length: usize, mult: usize, algorithm: &CarpetAlgorithm, record_events: bool) -> Self {
         let mut grid = Grid::new(size, size, 0);
         grid.record_events = record_events;
         Self {
@@ -240,8 +244,8 @@ impl Carpet {
         }
 
         // Draw a smaller square starting at the endpoint of the side and turning counter-clockwise.
-        let next_length = length * self.mult;
-        if next_length.round() >= self.min_length as f32 {
+        let next_length = length * (self.mult as f32 / 1_000.0);
+        if next_length.round() as usize >= self.min_length {
             self.square(coord2, direction.ccw(), next_length, in_wedge);
         }
         coord2
@@ -287,14 +291,14 @@ impl Carpet {
         let mut square_sizes = vec![];
         let mut one_size = self.size as f32;
         let mut prev_rounded_size = 0;
-        while one_size >= self.min_length as f32 {
+        while one_size.round() as usize >= self.min_length {
             let rounded_size = one_size.round() as usize;
             if rounded_size == prev_rounded_size {
                 break;
             }
             prev_rounded_size = rounded_size;
             square_sizes.push(rounded_size);
-            one_size *= self.mult;
+            one_size *= self.mult as f32 / 1_000.0;
         }
 
         self.flat_square(0, &square_sizes, false, 0, 0, self.size - 1, self.size - 1);
@@ -344,9 +348,9 @@ impl Carpet {
         }
     }
 
-    fn full_file_name(size: usize, min_length: usize, mult: f32, label: Option<&str>) -> String {
+    fn full_file_name(size: usize, min_length: usize, mult: usize, label: Option<&str>) -> String {
         let label = label.map_or("".to_string(), |label| format!(" {}", label));
-        format!("{}/carpet_{}_{}_{}{}.txt", PATH_IMAGE_FILES, size, min_length, (mult * 1_000.0) as usize, label)
+        format!("{}/carpet_{}_{}_{}{}.txt", PATH_IMAGE_FILES, size, min_length, mult, label)
     }
 
     pub fn write_grid(&self) {
@@ -363,12 +367,12 @@ impl Carpet {
         //rintln!("Carpet::write_grid({}): {:?}", full_file_name, Instant::now() - start_time);
     }
 
-    pub fn read_grid_optional(size: usize, min_length: usize, mult: f32) -> Option<Grid<usize>> {
+    pub fn read_grid_optional(size: usize, min_length: usize, mult: usize) -> Option<Grid<usize>> {
         let full_file_name = Self::full_file_name(size, min_length, mult, None);
         Grid::read_optional(&full_file_name)
     }
 
-    pub fn read_or_make_grid(size: usize, min_length: usize, mult: f32) -> Grid<usize> {
+    pub fn read_or_make_grid(size: usize, min_length: usize, mult: usize) -> Grid<usize> {
         match Carpet::read_grid_optional(size, min_length, mult) {
             Some(grid) => {
                 //rintln!("Carpet::read_or_make_grid({}): found", full_file_name);
@@ -387,7 +391,7 @@ impl Carpet {
         }
     }
 
-    pub fn grid_exists(size: usize, min_length: usize, mult: f32) -> bool {
+    pub fn grid_exists(size: usize, min_length: usize, mult: usize) -> bool {
         let full_file_name = Carpet::full_file_name(size, min_length, mult, None);
         Path::new(&full_file_name).exists()
     }
@@ -478,7 +482,7 @@ pub fn create_image_file(size: usize, min_length: usize, mult: f32, algorithm: C
 }
 */
 
-pub fn create_one(size: usize, min_length: usize, mult: f32, algorithm: &CarpetAlgorithm) -> Carpet {
+pub fn create_one(size: usize, min_length: usize, mult: usize, algorithm: &CarpetAlgorithm) -> Carpet {
     let record_events = false;
     let mut carpet = Carpet::new(size, min_length, mult, algorithm, record_events);
     carpet.go();
@@ -486,7 +490,7 @@ pub fn create_one(size: usize, min_length: usize, mult: f32, algorithm: &CarpetA
 }
 
 #[allow(dead_code)]
-fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: f32, algorithm: &CarpetAlgorithm) {
+fn draw_one(size: usize, display_width_mult: f64, min_length: usize, mult: usize, algorithm: &CarpetAlgorithm) {
     let start_time = Instant::now();
     let carpet = create_one(size, min_length, mult, algorithm);
     println!("Create carpet: {:?}; count_square = {}, count_side = {}, count_touch_rect = {}",
@@ -504,7 +508,7 @@ fn first() {
     let size: usize = 800;
     let display_width_mult = 1.0;
     let min_length = 5;
-    let mult = 0.68;
+    let mult = 680;
     let record_events = false;
     let mut carpet = Carpet::new(size, min_length, mult, &CarpetAlgorithm::Simple, record_events);
 
@@ -563,7 +567,7 @@ fn try_draw_wedge() {
     let size = 400;
     let display_width_mult = 2.0;
     let min_length = 7;
-    let mult = 0.68;
+    let mult = 680;
     draw_one(size, display_width_mult, min_length, mult,&CarpetAlgorithm::Simple);
     draw_one(size, display_width_mult, min_length, mult,&CarpetAlgorithm::Wedge);
 }
@@ -576,7 +580,7 @@ fn try_animation() {
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.60, 0.65, 0.001)
     // animate_mult_parallel(800, 2, 1.0, 1.0, 3, 0.63, 0.68, 0.001, 50);
     // animate_mult_parallel(400, 2.0, 1.0, 3, 0.5, 0.60, 0.001)
-    animate_mult_parallel(400, 2, 2.0, 2.0, 3, 0.65, 0.8, 0.001, 50);
+    animate_mult_parallel(400, 2, 2.0, 2.0, 3, 650, 800, 1, 50);
     // animate_show_existing(400, 2.0, 2.0, 3, 0.7, 0.9, 0.001);
     // animate_mult_parallel(200, 5, 4.0, 1.0, 7, 0.6, 0.8, 0.002, 1_000);
     // animate_mult_parallel(200, 5, 2.0, 1.0, 7, 0.8, 0.9, 0.002, 1_000);
@@ -587,7 +591,7 @@ fn try_animation() {
 }
 
 #[allow(dead_code)]
-fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
+fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: usize, mult_max: usize, mult_step: usize) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let mut frames = vec![];
@@ -617,7 +621,7 @@ fn animate_mult(size: usize, display_width_mult: f64, frame_seconds: f64, min_le
 }
 
 #[allow(dead_code)]
-fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32, threads_max: usize) {
+fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: usize, mult_max: usize, mult_step: usize, threads_max: usize) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let start_time = Instant::now();
@@ -700,7 +704,7 @@ fn animate_mult_parallel(size: usize, black_white_modulus: usize, display_width_
 }
 
 #[allow(dead_code)]
-fn animate_show_existing(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: f32, mult_max: f32, mult_step: f32) {
+fn animate_show_existing(size: usize, black_white_modulus: usize, display_width_mult: f64, frame_seconds: f64, min_length: usize, mult_min: usize, mult_max: usize, mult_step: usize) {
     let display_width = size as f64 * display_width_mult;
     let display_height = display_width;
     let start_time = Instant::now();
@@ -745,14 +749,14 @@ fn try_write_and_read_grid() {
     found_grid.write(&format!("{}/Test_Grid.txt", PATH_IMAGE_FILES));
      */
 
-    Carpet::read_or_make_grid(400, 5, 0.681);
-    Carpet::read_or_make_grid(400, 5, 0.681);
+    Carpet::read_or_make_grid(400, 5, 681);
+    Carpet::read_or_make_grid(400, 5, 681);
 }
 
 #[allow(dead_code)]
 fn optimize_build_grid() {
     // Carpet::new(400, 3, 0.68, CarpetAlgorithm::Wedge, false).go();
-    draw_one(400, 2.0, 7, 0.68, &CarpetAlgorithm::Wedge);
+    draw_one(400, 2.0, 7, 680, &CarpetAlgorithm::Wedge);
 }
 
 #[allow(dead_code)]
@@ -762,7 +766,7 @@ fn try_algorithms() {
 
     let size = 400;
     let min_length = 3;
-    let mult = 0.68;
+    let mult = 680;
     for algorithm in [CarpetAlgorithm::Simple, CarpetAlgorithm::Wedge, CarpetAlgorithm::FlatSquare].iter() {
         let start_time = Instant::now();
         let mut carpet = Carpet::new(size, min_length, mult, algorithm, false);
@@ -779,8 +783,8 @@ fn try_combine_carpets() {
     let display_mult = 2.0;
     let min_length_a = 7;
     let min_length_b = 7;
-    let mult_a = 0.68;
-    let mult_b = 0.69;
+    let mult_a = 680;
+    let mult_b = 690;
     let algorithm = &CarpetAlgorithm::Wedge;
     let carpet_a = create_one(size, min_length_a, mult_a, algorithm);
     // carpet_a.draw(2.0);
@@ -825,12 +829,12 @@ fn make_gallery() {
     let margin_size = size / 20;
     let display_mult = 1.0;
     let min_length = 7;
-    let mult_min = 0.680;
-    let mult_max = 0.682;
+    let mult_min = 680;
+    let mult_max = 682;
     let carpet_count = 2;
     let col_count = 2;
     let algorithm = &CarpetAlgorithm::Wedge;
-    let mult_inc = (mult_max - mult_min) / (carpet_count - 1) as f32;
+    let mult_inc = (mult_max - mult_min) / (carpet_count - 1);
     let mut grids = Vec::with_capacity(carpet_count);
     let mut mult = mult_min;
     for _ in 0..carpet_count {
@@ -847,7 +851,7 @@ fn make_gallery_other_mod() {
     let margin_size = size / 20;
     let display_mult = 2.0;
     let min_length = 3;
-    let mult= 0.67;
+    let mult= 670;
     let col_count = 4;
     let size = 200;
     let algorithm = &CarpetAlgorithm::Wedge;
@@ -873,7 +877,7 @@ fn make_gallery_mult_mod_xor() {
     let margin_size = size / 20;
     let display_mult = 2.0;
     let min_length = 3;
-    let mult= 0.67;
+    let mult= 670;
     let col_count = 4;
     let algorithm = &CarpetAlgorithm::Wedge;
 
@@ -901,7 +905,7 @@ fn make_gallery_mod_large() {
     let margin_size = size / 20;
     let display_mult = 1.0;
     let min_length = 7;
-    let mult= 0.67;
+    let mult= 670;
     let col_count = 2;
     let algorithm = &CarpetAlgorithm::Wedge;
     let mods = vec![4, 5];
@@ -923,7 +927,7 @@ fn make_gallery_mod_medium() {
     let margin_size = size / 20;
     let display_mult = 1.0;
     let min_length = 4;
-    let mult= 0.69;
+    let mult= 690;
     let col_count = 4;
     let grid_count = 8;
     let algorithm = &CarpetAlgorithm::Wedge;
@@ -946,13 +950,13 @@ fn make_gallery_mod_4_combo_1() {
     let margin_size = size / 20;
     let display_mult = 1.0;
     let min_length = 4;
-    let mult_min= 0.67;
-    let mult_max= 0.73;
+    let mult_min= 670;
+    let mult_max= 730;
     let col_count = 9;
     let grid_count = col_count * 4;
     let algorithm = &CarpetAlgorithm::Wedge;
 
-    let mult_inc = (mult_max - mult_min) / (col_count - 1) as f32;
+    let mult_inc = (mult_max - mult_min) / (col_count - 1);
 
     let mut grids = Vec::with_capacity(grid_count);
     let mut mult = mult_min;
@@ -986,14 +990,14 @@ fn make_gallery_mod_4_combo() {
     let display_mult = 1.0;
     // let min_length = 4;
     let min_length = 3;
-    let mult_min= 0.67;
-    let mult_max= 0.73;
+    let mult_min= 670;
+    let mult_max= 730;
     let modulus = 4;
     let col_count = 9;
     let grid_count = col_count * 4;
     // let algorithm = &CarpetAlgorithm::Simple;
 
-    let mult_inc = (mult_max - mult_min) / (col_count - 1) as f32;
+    let mult_inc = (mult_max - mult_min) / (col_count - 1);
 
     let mut ref_grids = Vec::with_capacity(col_count);
     let mut grids = Vec::with_capacity(grid_count);
@@ -1024,7 +1028,7 @@ fn make_gallery_mod_4_combo() {
 
     let layout_grid = Grid::arrange(col_count, false, margin_size, &grids);
 
-    let file_name = format!("{}/carpet_{}_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, (mult_min * 1_000.0) as usize, (mult_max * 1_000.0) as usize, label);
+    let file_name = format!("{}/carpet_{}_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, mult_min, mult_max, label);
     image_util::save_grid(&layout_grid, &file_name, &|value| bool_to_color_256_black_white(*value), 0, None);
 
     layout_grid.draw(display_mult, &|value| bool_to_color_black_white(*value));
@@ -1037,7 +1041,7 @@ fn debug_edge_issue() {
     let margin_size = 5;
     let display_mult = 10.0;
     let min_length = 4;
-    let mult= 0.67;
+    let mult= 670;
     let modulus = 2;
     let col_count = 3;
     let grid_count = col_count + 1;
@@ -1060,20 +1064,158 @@ fn debug_edge_issue() {
     layout_grid.draw(display_mult, &|value| bool_to_color_black_white(*value));
 }
 
+#[allow(dead_code)]
 fn generate_grids_parallel() {
-    let size = 200;
+    let size = 300;
     let min_length = 5;
-    let mult_min = 0.700;
-    let mult_inc = 0.001;
-    let grid_count = 200;
+    let mult_min = 550;
+    let mult_max = 750;
+    let mult_inc = 1;
+    // let thread_limit = 30;
+    let thread_limit = 2_000;
 
     let mut mult = mult_min;
     let mut handles = vec![];
-    for _ in 0..grid_count {
-        handles.push(thread::spawn(move || { Carpet::read_or_make_grid(size, min_length, mult) }));
+    while mult <= mult_max {
+        if !Carpet::grid_exists(size, min_length, mult) {
+            println!("[{}] {}", handles.len(), mult);
+            handles.push(thread::spawn(move || { Carpet::read_or_make_grid(size, min_length, mult) }));
+            if handles.len() == thread_limit - 1 {
+                break;
+            }
+        }
         mult += mult_inc;
     }
     for handle in handles {
         let _ = handle.join();
     }
+}
+
+#[allow(dead_code)]
+fn draw_big_gallery() {
+    // let size = 200;
+    // let col_count = 10;
+    let size = 300;
+    let col_count = 7;
+    let min_length = 5;
+    let mult_min = 500;
+    let mult_max = 900;
+    let mult_inc = 1;
+
+    let margin_size = size / 20;
+    let modulus = 4;
+
+    let mut grids = vec![];
+    for mult in list_unique_grid_mults(size, min_length, mult_min, mult_max, mult_inc).iter() {
+        println!("{}", mult);
+        let grid = Carpet::read_grid_optional(size, min_length, *mult).unwrap();
+        grids.push(grid.copy_with_value_function(&|count| count % modulus == 0, false));
+    }
+
+    let layout_grid = Grid::arrange(col_count, false, margin_size, &grids);
+    let file_name = format!("{}/carpet_big_gallery_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, mult_min, mult_max);
+    image_util::save_grid(&layout_grid, &file_name, &|value| bool_to_color_256_black_white(*value), 0, None);
+}
+
+#[allow(dead_code)]
+fn draw_combo_gallery() {
+    let mut rng = thread_rng();
+
+    let size = 200;
+    let col_count = 10;
+    let combo_count = 1_000;
+    // let size = 300;
+    // let col_count = 7;
+    // let combo_count = 100;
+    let min_length = 5;
+    let mult_min = 550;
+    let mult_max = 900;
+    let mult_inc = 1;
+
+    let margin_size = size / 20;
+    // let modulus = 4;
+
+    let mults = list_unique_grid_mults(size, min_length, mult_min, mult_max, mult_inc);
+    //bg!(mults.len());
+
+    let mut grids = vec![];
+    for i in 0..combo_count {
+        let mult_a = mults[rng.gen_range(0..mults.len())];
+        let mult_b = mults[rng.gen_range(0..mults.len())];
+        let grid_a = Carpet::read_grid_optional(size, min_length, mult_a).unwrap();
+        let grid_b = Carpet::read_grid_optional(size, min_length, mult_b).unwrap();
+
+        // let grid = grid_a.copy_add(&grid_b).copy_with_value_function(&|count| count % modulus == 0, false);
+
+        let grid = grid_a.copy_add(&grid_b);
+        let grid = grid.copy_with_value_function(&|count| count & 100, 0);
+        let grid = grid.copy_normalize(255);
+        // grid.draw(display_mult, &|value| grayscale_256_to_color_1(*value));
+
+        grids.push(grid);
+        println!("[{}]: {} + {}", i, mult_a, mult_b);
+    }
+    // let layout_grid = Grid::arrange(col_count, false, margin_size, &grids);
+    let layout_grid = Grid::arrange(col_count, 0, margin_size, &grids);
+    let file_name = format!("{}/carpet_combo_gallery.png_{}_{}_{}_{}.png", PATH_IMAGE_FILES, size, min_length, mult_min, mult_max);
+    // image_util::save_grid(&layout_grid, &file_name, &|value| bool_to_color_256_black_white(*value), 0, None);
+    image_util::save_grid(&layout_grid, &file_name, &|value| grayscale_256_to_color_256(*value), 0, None);
+}
+
+#[allow(dead_code)]
+fn list_unique_grid_mults(size: usize, min_length: usize, mult_min: usize, mult_max: usize, mult_inc: usize) -> Vec<usize> {
+    let mut mults = vec![];
+    let mut mult = mult_min;
+    let mut previous_found_mult = None;
+    while mult <= mult_max {
+        if previous_found_mult.map_or(true, |previous_found_mult|!equivalent_carpet(size, min_length, previous_found_mult, mult)) {
+            if Carpet::grid_exists(size, min_length, mult) {
+                mults.push(mult);
+                previous_found_mult = Some(mult);
+            }
+        }
+        mult += mult_inc;
+    }
+    mults
+}
+
+fn equivalent_carpet(size: usize, min_length: usize, mult_a: usize, mult_b: usize) -> bool {
+    //bg!(size, min_length, mult_a, mult_b);
+    let (mult_a, mult_b) = (mult_a as f32 / 1_000.0, mult_b as f32 / 1_000.0);
+    let mut length_a = size as f32;
+    let mut length_b = length_a;
+    loop {
+        let length_a_round = length_a.round() as usize;
+        let length_b_round = length_b.round() as usize;
+        //bg!(length_a, length_b);
+        if length_a_round != length_b_round {
+            return false;
+        }
+        if length_a_round < min_length || length_b_round < min_length {
+            return true;
+        }
+        length_a *= mult_a;
+        length_b *= mult_b;
+    }
+}
+
+#[allow(dead_code)]
+fn try_grayscale_256() {
+    let size = 300;
+    let min_length = 5;
+    let mult = 700;
+
+    let display_mult= 2.0;
+
+    let grid = Carpet::read_or_make_grid(size, min_length, mult);
+    //bg!(&grid.cell_values);
+
+    dbg!(grid.max_value());
+
+    let grid = grid.copy_with_value_function(&|count| count & 100, 0);
+
+    let grid = grid.copy_normalize(255);
+    //bg!(&grid.cell_values);
+
+    grid.draw(display_mult, &|value| grayscale_256_to_color_1(*value));
 }

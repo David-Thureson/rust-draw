@@ -35,8 +35,14 @@ pub fn save_grid<T, F>(grid: &Grid<T>, file_name: &str, color_func: &F, border_w
     img.save(file_name).unwrap();
 }
 
-fn color_rgb_to_rgb(color_rgb: &Color256) -> Rgb<u8> {
+pub fn color_rgb_to_rgb(color_rgb: &Color256) -> Rgb<u8> {
     Rgb([color_rgb.r, color_rgb.g, color_rgb.b])
+}
+
+pub fn grayscale_rgb_from_256(value: usize) -> Rgb<u8> {
+    debug_assert!(value < 256);
+    let value = value as u8;
+    Rgb([value, value, value])
 }
 
 // fn rectangle<T>(img: &mut ImageBuffer<T>, rgb: &Rgb<u8>, x1: u32, y1: u32, x2: u32, y2: u32) {
