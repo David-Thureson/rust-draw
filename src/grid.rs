@@ -178,16 +178,19 @@ impl <T> Grid<T>
         }
     }
 
+    #[inline]
     pub fn get_xy(&self, x: usize, y: usize) -> T {
         debug_assert!(x < self.width);
         debug_assert!(y < self.height);
         self.cell_values[y][x].clone()
     }
 
+    #[inline]
     pub fn get_coord(&self, coord: GridCoord) -> T {
         self.get_xy(coord.x, coord.y)
     }
 
+    #[inline]
     pub fn set_xy(&mut self, x: usize, y: usize, value: T) {
         debug_assert!(!self.record_events);
         debug_assert!(x < self.width);
@@ -195,16 +198,19 @@ impl <T> Grid<T>
         self.cell_values[y][x] = value;
     }
 
+    #[inline]
     pub fn set_by_index(&mut self, cell_index: usize, value: T) {
         let (x, y) = cell_index_to_x_y_usize(self.width, cell_index);
         self.set_xy(x, y, value);
     }
 
+    #[inline]
     pub fn set_coord(&mut self, coord: GridCoord, value: T) {
         debug_assert!(!self.record_events);
         self.cell_values[coord.y][coord.x] = value;
     }
 
+    #[inline]
     pub fn coord_is_in_grid(&self, coord: GridCoord) -> bool {
         coord.x < self.width && coord.y < self.height
     }
@@ -653,6 +659,26 @@ impl Grid<usize> {
         self.copy_with_other(other, &|a, b| a + b, 0)
     }
 
+    #[inline]
+    pub fn add_xy(&mut self, x: usize, y: usize, value: usize, modulus: Option<usize>) {
+        debug_assert!(!self.record_events);
+        debug_assert!(x < self.width);
+        debug_assert!(y < self.height);
+        let mut new_value = self.get_xy(x, y).checked_add(value).unwrap();
+        if let Some(modulus) = modulus {
+            new_value = new_value % modulus;
+        }
+        self.set_xy(x, y, new_value);
+    }
+
+    pub fn add_grid_at_x_y(&mut self, x: usize, y: usize, other: &Self, modulus: Option<usize>) {
+        for other_y in 0..other.height {
+            for other_x in 0..other.width {
+                self.add_xy(x + other_x, y + other_y, other.get_xy(other_x, other_y), modulus);
+            }
+        }
+    }
+
     pub fn min_max(&self) -> (usize, usize) {
         let mut min = usize::MAX;
         let mut max = usize::MIN;
@@ -709,6 +735,7 @@ impl Grid<usize> {
         let frame = Frame::new(shapes, frame_seconds);
         frame
     }
+
     pub fn write(&self, full_file_name: &str) {
         // let start_time = Instant::now();
         let content = format!("{}\n{}\n{}", self.width, self.height,
@@ -770,6 +797,18 @@ impl Grid<usize> {
             }
         }
         max
+    }
+
+    pub fn assert_equal(&self, other: &Self) {
+        assert_eq!(self.width, other.width);
+        assert_eq!(self.height, other.height);
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if self.get_xy(x, y) != other.get_xy(x, y) {
+                    panic!("Mismatch at {}, {}", x, y);
+                }
+            }
+        }
     }
 }
 
