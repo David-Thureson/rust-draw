@@ -603,7 +603,7 @@ impl <T> Grid<T>
     pub fn arrange(col_count: usize, default_value: T, margin_size: usize, grids: &Vec<Grid<T>>) -> Self {
         let grid_count = grids.len();
         let one_grid_width = grids[0].width;
-        let one_grid_height = grids[1].height;
+        let one_grid_height = grids[0].height;
         let col_count = min(col_count, grid_count);
         let row_count = ((grid_count + col_count) - 1) / col_count;
         let grid_width = (one_grid_width * col_count) + (margin_size * (col_count + 3));

@@ -33,7 +33,8 @@ pub fn main() {
     // try_grayscale_256();
     // generate_grids_parallel();
     // draw_big_gallery();
-    draw_combo_gallery();
+    // draw_combo_gallery();
+    anim_flow();
 }
 
 #[derive(Clone)]
@@ -804,6 +805,64 @@ fn try_combine_carpets() {
 }
 
 #[allow(dead_code)]
+fn list_unique_grid_mults(size: usize, min_length: usize, mult_min: usize, mult_max: usize, mult_inc: usize) -> Vec<usize> {
+    let mut mults = vec![];
+    let mut mult = mult_min;
+    let mut previous_found_mult = None;
+    while mult <= mult_max {
+        if previous_found_mult.map_or(true, |previous_found_mult|!equivalent_carpet(size, min_length, previous_found_mult, mult)) {
+            if Carpet::grid_exists(size, min_length, mult) {
+                mults.push(mult);
+                previous_found_mult = Some(mult);
+            }
+        }
+        mult += mult_inc;
+    }
+    mults
+}
+
+fn equivalent_carpet(size: usize, min_length: usize, mult_a: usize, mult_b: usize) -> bool {
+    //bg!(size, min_length, mult_a, mult_b);
+    let (mult_a, mult_b) = (mult_a as f32 / 1_000.0, mult_b as f32 / 1_000.0);
+    let mut length_a = size as f32;
+    let mut length_b = length_a;
+    loop {
+        let length_a_round = length_a.round() as usize;
+        let length_b_round = length_b.round() as usize;
+        //bg!(length_a, length_b);
+        if length_a_round != length_b_round {
+            return false;
+        }
+        if length_a_round < min_length || length_b_round < min_length {
+            return true;
+        }
+        length_a *= mult_a;
+        length_b *= mult_b;
+    }
+}
+
+#[allow(dead_code)]
+fn try_grayscale_256() {
+    let size = 300;
+    let min_length = 5;
+    let mult = 700;
+
+    let display_mult= 2.0;
+
+    let grid = Carpet::read_or_make_grid(size, min_length, mult);
+    //bg!(&grid.cell_values);
+
+    dbg!(grid.max_value());
+
+    let grid = grid.copy_with_value_function(&|count| count & 100, 0);
+
+    let grid = grid.copy_normalize(255);
+    //bg!(&grid.cell_values);
+
+    grid.draw(display_mult, &|value| grayscale_256_to_color_1(*value));
+}
+
+#[allow(dead_code)]
 fn make_gallery() {
     /*
     let size = 100;
@@ -1163,59 +1222,42 @@ fn draw_combo_gallery() {
 }
 
 #[allow(dead_code)]
-fn list_unique_grid_mults(size: usize, min_length: usize, mult_min: usize, mult_max: usize, mult_inc: usize) -> Vec<usize> {
-    let mut mults = vec![];
-    let mut mult = mult_min;
-    let mut previous_found_mult = None;
-    while mult <= mult_max {
-        if previous_found_mult.map_or(true, |previous_found_mult|!equivalent_carpet(size, min_length, previous_found_mult, mult)) {
-            if Carpet::grid_exists(size, min_length, mult) {
-                mults.push(mult);
-                previous_found_mult = Some(mult);
-            }
-        }
-        mult += mult_inc;
-    }
-    mults
-}
-
-fn equivalent_carpet(size: usize, min_length: usize, mult_a: usize, mult_b: usize) -> bool {
-    //bg!(size, min_length, mult_a, mult_b);
-    let (mult_a, mult_b) = (mult_a as f32 / 1_000.0, mult_b as f32 / 1_000.0);
-    let mut length_a = size as f32;
-    let mut length_b = length_a;
-    loop {
-        let length_a_round = length_a.round() as usize;
-        let length_b_round = length_b.round() as usize;
-        //bg!(length_a, length_b);
-        if length_a_round != length_b_round {
-            return false;
-        }
-        if length_a_round < min_length || length_b_round < min_length {
-            return true;
-        }
-        length_a *= mult_a;
-        length_b *= mult_b;
-    }
-}
-
-#[allow(dead_code)]
-fn try_grayscale_256() {
-    let size = 300;
+fn anim_flow() {
+    let size = 200;
     let min_length = 5;
-    let mult = 700;
+    let mult = 680;
 
-    let display_mult= 2.0;
+    let mod_min = 2;
+    let mod_max = 300;
+    let mod_inc = 1;
 
-    let grid = Carpet::read_or_make_grid(size, min_length, mult);
-    //bg!(&grid.cell_values);
+    let margin_size = size / 20;
+    let display_width_mult = 2.0;
+    let frame_seconds = 0.2;
 
-    dbg!(grid.max_value());
+    let size = 800;
+    let min_length = 7;
+    let mod_max = 400;
+    let display_width_mult = 1.0;
 
-    let grid = grid.copy_with_value_function(&|count| count & 100, 0);
+    let display_width = (size + (4 * margin_size)) as f64 * display_width_mult;
+    let display_height = display_width;
 
-    let grid = grid.copy_normalize(255);
-    //bg!(&grid.cell_values);
+    let ref_grid = Carpet::read_or_make_grid(size, min_length, mult);
+    let mod_max = ref_grid.max_value() / 10;
 
-    grid.draw(display_mult, &|value| grayscale_256_to_color_1(*value));
+    let mut modulus = mod_min;
+    let mut frames = vec![];
+    while modulus <= mod_max {
+        let grid = ref_grid.copy_with_value_function(&|count| count & modulus, 0);
+        let grid = grid.copy_normalize(255);
+        let layout_grid = Grid::arrange(1, 0, margin_size, &vec![grid]);
+        frames.push(layout_grid.as_frame(display_width, display_height, frame_seconds, &|value| grayscale_256_to_color_1(*value)));
+        println!("frame {} / {}", modulus, mod_max);
+        modulus += mod_inc;
+    }
+
+    let back_color = count_to_color_black_white(&0);
+    let additive = false;
+    Renderer::display_additive("Carpet", display_width, display_height, back_color, frames, additive);
 }
